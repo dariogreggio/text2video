@@ -39,6 +39,9 @@
 #define IDS_TEXTSIZE                    61452
 #define IDS_FONT                        61453
 #define IDS_IMGSIZE                     61454
+#define IDS_ALIGNMENT                   61455
+#define IDS_FPS                         61456
+#define IDS_DURATA                      61457
 
 // Next default values for new objects
 // 

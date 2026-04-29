@@ -289,8 +289,12 @@ public:
 	COLORREF ColorFore,ColorBack;
 	WORD TextSize;
 	BYTE ImageSize;
+	DWORD Align;
+	WORD DurataFrame;
+	BYTE FpS;
 	CString inputFile,outputFile;
 	CString Font;
+
 	DWORD inputPos;
 
 	bool bPreview;

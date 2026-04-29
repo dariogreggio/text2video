@@ -1,0 +1,42 @@
+// text2vid.odl : type library source for text2vid.exe
+
+// This file will be processed by the MIDL compiler to produce the
+// type library (text2vid.tlb).
+
+[ uuid(08FDC294-B861-4D7B-92B9-5CC4C0CE6257), version(1.0) ]
+library Text2vid
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+
+	//  Primary dispatch interface for CText2vidDoc
+	
+	[ uuid(BB51F934-B6AC-4F07-A4F8-50E897EBA5D2) ]
+	dispinterface IText2vid
+	{
+		properties:
+			// NOTE - ClassWizard will maintain property information here.
+			//    Use extreme caution when editing this section.
+			//{{AFX_ODL_PROP(CText2vidDoc)
+			//}}AFX_ODL_PROP
+			
+		methods:
+			// NOTE - ClassWizard will maintain method information here.
+			//    Use extreme caution when editing this section.
+			//{{AFX_ODL_METHOD(CText2vidDoc)
+			//}}AFX_ODL_METHOD
+
+	};
+
+	//  Class information for CText2vidDoc
+	
+	[ uuid(686A1A8B-5885-4C6C-B4C6-2C4C1E214070) ]
+	coclass Document
+	{
+		[default] dispinterface IText2vid;
+	};
+
+	//{{AFX_APPEND_ODL}}
+	//}}AFX_APPEND_ODL}}
+};

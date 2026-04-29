@@ -18,14 +18,17 @@ public:
 public:
 // Dialog Data
 	COLORREF m_ForeColor,m_BackColor;
-	WORD m_Size;
-	BYTE m_Fps;
+	CString m_Font;
 	WORD m_Frames;
 	//{{AFX_DATA(COpzioniDlg)
 	enum { IDD = IDD_OPZIONI };
 	int		m_DimensioneImmagini;
 	int		m_AlignHoriz;
 	int		m_AlignVert;
+	int		m_FpS;
+	int		m_Durata;
+	int		m_FontSize;
+	BOOL	m_AutoSize;
 	//}}AFX_DATA
 
 

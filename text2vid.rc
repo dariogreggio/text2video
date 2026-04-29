@@ -505,6 +505,13 @@ BEGIN
     IDS_TEXTSIZE            "TextSize"
     IDS_FONT                "Font"
     IDS_IMGSIZE             "ImageSize"
+    IDS_ALIGNMENT           "Alignment"
+END
+
+STRINGTABLE DISCARDABLE 
+BEGIN
+    IDS_FPS                 "FramesPerSec"
+    IDS_DURATA              "DurataImmagini"
 END
 
 #endif    // English (U.K.) resources

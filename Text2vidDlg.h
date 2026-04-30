@@ -29,6 +29,7 @@ public:
 	int		m_Durata;
 	int		m_FontSize;
 	BOOL	m_AutoSize;
+	int		m_Transizione;
 	//}}AFX_DATA
 
 

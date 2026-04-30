@@ -26,6 +26,7 @@ COpzioniDlg::COpzioniDlg(CWnd* pParent /*=NULL*/)
 	m_Durata = 0;
 	m_FontSize = 0;
 	m_AutoSize = FALSE;
+	m_Transizione = -1;
 	//}}AFX_DATA_INIT
 }
 
@@ -43,6 +44,7 @@ void COpzioniDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT2, m_FontSize);
 	DDV_MinMaxInt(pDX, m_FontSize, 2, 255);
 	DDX_Check(pDX, IDC_CHECK1, m_AutoSize);
+	DDX_CBIndex(pDX, IDC_COMBO2, m_Transizione);
 	//}}AFX_DATA_MAP
 }
 
@@ -59,15 +61,23 @@ END_MESSAGE_MAP()
 // COpzioniDlg message handlers
 
 BOOL COpzioniDlg::OnInitDialog() {
+	CString S;
+
 	CDialog::OnInitDialog();
 	
 	m_FontSize=theApp.TextSize;
 	m_ForeColor=theApp.ColorFore;
+	S.Format("%06X",m_ForeColor);
+	GetDlgItem(IDC_BUTTON1)->SetWindowText(S);
 	m_BackColor=theApp.ColorBack;
+	S.Format("%06X",m_BackColor);
+	GetDlgItem(IDC_BUTTON2)->SetWindowText(S);
 	m_Font=theApp.Font;
+	GetDlgItem(IDC_BUTTON3)->SetWindowText(m_Font);
 	m_DimensioneImmagini=theApp.ImageSize;
 	m_FpS=theApp.FpS;
 	m_Durata=theApp.DurataFrame;
+	m_Transizione=theApp.Transizione;
 	m_AlignHoriz=LOWORD(theApp.Align);
 	m_AlignVert=HIWORD(theApp.Align);
 
@@ -117,6 +127,8 @@ void COpzioniDlg::OnButton3() {		// font
 
 	if(ChooseFont(&cf)) {
 		m_Font=cf.lpLogFont->lfFaceName;
+		// m_FontSize=cf.lpLogFont->lfHeight;  no, non esce...
+		// UpdateData(FALSE);
 		}
 	
 	}

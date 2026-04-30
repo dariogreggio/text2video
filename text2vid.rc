@@ -220,7 +220,7 @@ BEGIN
                     119,8,SS_NOPREFIX
 END
 
-IDD_OPZIONI DIALOG DISCARDABLE  0, 0, 300, 232
+IDD_OPZIONI DIALOG DISCARDABLE  0, 0, 300, 189
 STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Opzioni"
 FONT 8, "MS Sans Serif"
@@ -235,21 +235,21 @@ BEGIN
     CONTROL         "1024x768",IDC_RADIO4,"Button",BS_AUTORADIOBUTTON,233,14,
                     43,9
     LTEXT           "Font:",IDC_STATIC,7,32,17,8
-    PUSHBUTTON      "Font",IDC_BUTTON3,34,29,50,14
-    LTEXT           "Dimensione:",IDC_STATIC,143,31,40,8
+    PUSHBUTTON      "Font",IDC_BUTTON3,28,29,106,14
+    LTEXT           "Dimensione:",IDC_STATIC,145,31,40,8
     LTEXT           "Colore testo:",IDC_STATIC,7,52,40,8
     PUSHBUTTON      "Colore testo",IDC_BUTTON1,52,50,50,14
-    LTEXT           "Colore sfondo:",IDC_STATIC,142,52,46,8
-    PUSHBUTTON      "Colore fondo",IDC_BUTTON2,193,49,50,14
+    LTEXT           "Colore sfondo:",IDC_STATIC,145,52,46,8
+    PUSHBUTTON      "Colore fondo",IDC_BUTTON2,194,49,50,14
     LTEXT           "Allineamento orizzontale:",IDC_STATIC,7,84,78,8
     LTEXT           "Allineamento verticale:",IDC_STATIC,7,102,72,8
-    DEFPUSHBUTTON   "OK",IDOK,95,211,50,14
-    PUSHBUTTON      "Annulla",IDCANCEL,159,211,50,14
+    DEFPUSHBUTTON   "OK",IDOK,95,168,50,14
+    PUSHBUTTON      "Annulla",IDCANCEL,159,168,50,14
     LTEXT           "Frame/sec:",IDC_STATIC,7,126,37,8
     LTEXT           "Durata immagini:",IDC_STATIC,131,126,53,8
-    LTEXT           "Transizioni:",IDC_STATIC,7,148,36,8
+    LTEXT           "Transizioni:",IDC_STATIC,7,147,36,8
     EDITTEXT        IDC_EDIT1,190,124,40,13,ES_AUTOHSCROLL
-    COMBOBOX        IDC_COMBO1,51,124,48,49,CBS_DROPDOWNLIST | WS_VSCROLL | 
+    COMBOBOX        IDC_COMBO1,49,124,48,49,CBS_DROPDOWNLIST | WS_VSCROLL | 
                     WS_TABSTOP
     CONTROL         "Sinistra",IDC_RADIO5,"Button",BS_AUTORADIOBUTTON | 
                     WS_GROUP | WS_TABSTOP,93,84,42,9
@@ -265,11 +265,13 @@ BEGIN
                     42,9
     CONTROL         "Basso",IDC_RADIO11,"Button",BS_AUTORADIOBUTTON,185,102,
                     42,9
-    CONTROL         "",IDC_STATIC,"Static",SS_BLACKRECT,251,50,29,12
+    CONTROL         "",IDC_STATIC,"Static",SS_BLACKRECT,248,50,29,12
     CONTROL         "",IDC_STATIC,"Static",SS_BLACKRECT,105,51,29,12
-    EDITTEXT        IDC_EDIT2,192,29,27,13,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT2,194,29,27,13,ES_AUTOHSCROLL
     CONTROL         "Auto",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     233,30,31,10
+    COMBOBOX        IDC_COMBO2,49,146,71,49,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    WS_TABSTOP
 END
 
 IDD_CREA DIALOG DISCARDABLE  0, 0, 284, 121
@@ -351,7 +353,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 293
         TOPMARGIN, 7
-        BOTTOMMARGIN, 225
+        BOTTOMMARGIN, 182
     END
 
     IDD_CREA, DIALOG
@@ -382,6 +384,16 @@ BEGIN
 0x3031, "\000" 
     IDC_COMBO1, 0x403, 3, 0
 0x3532, "\000" 
+    IDC_COMBO2, 0x403, 8, 0
+0x654e, 0x7373, 0x6e75, 0x0061, 
+    IDC_COMBO2, 0x403, 8, 0
+0x6146, 0x6564, 0x6920, 0x006e, 
+    IDC_COMBO2, 0x403, 9, 0
+0x6146, 0x6564, 0x6f20, 0x7475, "\000" 
+    IDC_COMBO2, 0x403, 12, 0
+0x6146, 0x6564, 0x6920, 0x2f6e, 0x756f, 0x0074, 
+    IDC_COMBO2, 0x403, 11, 0
+0x7243, 0x736f, 0x2d73, 0x6166, 0x6564, "\000" 
     0
 END
 
@@ -512,6 +524,7 @@ STRINGTABLE DISCARDABLE
 BEGIN
     IDS_FPS                 "FramesPerSec"
     IDS_DURATA              "DurataImmagini"
+    IDS_TRANSIZIONE         "Transizione"
 END
 
 #endif    // English (U.K.) resources

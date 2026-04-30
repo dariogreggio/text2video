@@ -293,6 +293,7 @@ public:
 	DWORD Align;
 	WORD DurataFrame;
 	BYTE FpS;
+	BYTE Transizione;
 	CString inputFile,outputFile;
 	CString Font;
 

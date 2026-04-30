@@ -174,6 +174,7 @@ BOOL CText2vidApp::InitInstance() {
 	DurataFrame=GetInt(MAKEINTRESOURCE(IDS_DURATA));
 	if(!DurataFrame)
 		DurataFrame=1;
+	Transizione=GetInt(MAKEINTRESOURCE(IDS_TRANSIZIONE));
 	
 	bPreview=GetInt(MAKEINTRESOURCE(IDS_PREVIEW));
 
@@ -832,12 +833,10 @@ int CText2vidApp::writeTextToBitmap(const CBitmap *b,const char *s,int x,int y,B
 
 
 
-//				sz=theApp.m_pMainWnd->GetDC()->GetTextExtent(S,S.GetLength());
-	SetRectEmpty(&sz);
-	i=dc1.DrawText(s,&sz,DT_CALCRECT);
-	sz.bottom=i;
+	sz=rc;
+	i=dc1.DrawText(s,&sz,DT_WORDBREAK | DT_CALCRECT);
 
-	flags=0;
+	flags=DT_WORDBREAK /*0*/;
 //	i=dc1.TextOut(x,y,s,_tcslen(s));
 	switch(ha) {
 		case 0:
@@ -970,6 +969,8 @@ void CText2vidApp::OnFileCreajpeg() {
 			CJpeg *myJPEG;
 			CString S2=CTime::GetCurrentTime().Format("text2vid_%d_%m_%Y_%H_%M");
 
+			// PRENDERE NOME DOCUMENTO INPUT!
+
 			theApp.getVersione(myBuf2);
 			myJPEG=new CJpeg(myBuf2);
 //				p1=myJPEG->buildJPEG(IDB_MONOSCOPIO,&len,75);
@@ -985,7 +986,7 @@ void CText2vidApp::OnFileCreajpeg() {
 			b.DeleteObject();
 			HeapFree(GetProcessHeap(),0,p1);
 			delete myJPEG;
-			} while(!S.IsEmpty());
+			} while(!S.IsEmpty() && n<1000);		// safety!
 
 		resetInput();
 
@@ -1019,16 +1020,18 @@ void CText2vidApp::OnFileCreavideo() {
 	PAVISTREAM myps=NULL;
 	DWORD dwTextFormat; 
 	DWORD compressor=mmioFOURCC('I','V','5','0');	/*fisso per ora*/
-	static int xSize,ySize,xSizeCap,ySizeCap;
+	int xSize,ySize,xSizeCap,ySizeCap;
 	int tipoImg,subTipoImg;
 	DWORD l,len,ti;
 	BYTE *p,*p1;
+	DWORD *pBmpBack=NULL,*pBmpPrec=NULL,*pBmpSeg=NULL;
 	CFile mF;
 	CString S;
 	CStringEx S2;
 
 	CCreaDlg ccd;
 
+			// PRENDERE NOME DOCUMENTO INPUT!
 	if(ccd.DoModal() == IDOK) {
 
 		CBitmap b;
@@ -1048,10 +1051,10 @@ void CText2vidApp::OnFileCreavideo() {
 
 //			i=b.LoadBitmap(IDB_MONOSCOPIO);
 
-		rc2.top=rc2.left=0;
+/*		rc2.top=rc2.left=0;
 		rc2.bottom=biCompDef.bmiHeader.biHeight;
 		rc2.right=biCompDef.bmiHeader.biWidth;
-
+*/
 
 
 		psVideo=NULL, psAudio=NULL, psText = NULL;
@@ -1147,6 +1150,23 @@ void CText2vidApp::OnFileCreavideo() {
 				rc2.bottom=biCompDef.bmiHeader.biHeight;
 				rc2.right=biCompDef.bmiHeader.biWidth;
 
+				i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL)/8;
+				{
+				pBmpBack=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /* (32bpp fisso*/);
+				DWORD *pBmp1=pBmpBack;
+				int x,y;
+				for(y=0; y<rc2.bottom; y++) {
+					for(x=0; x<rc2.right; x++) {		// invertire colorback e scrivere dword, ma occhio alla fine!
+						*(BYTE*)pBmp1=LOBYTE(HIWORD(ColorBack));
+						*(((BYTE*)pBmp1)+1)=HIBYTE(LOWORD(ColorBack));
+						*(((BYTE*)pBmp1)+2)=LOBYTE(LOWORD(ColorBack));
+						pBmp1=(DWORD*)(((DWORD)pBmp1)+4);
+						}
+					}
+				}
+				pBmpPrec=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
+				pBmpSeg=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
+
 				maxFrameSize=ICCompressGetSize(hICCo,&biRawDef,&biCompDef);
 				i=ICCompressBegin(hICCo,&biRawDef,&biCompDef);
 
@@ -1155,23 +1175,23 @@ void CText2vidApp::OnFileCreavideo() {
 					if(S.IsEmpty())
 						break;
 
-					{
+					switch(Transizione) {
+						case 0:		// nulla
+							break;
+						case 1:		// fadein
+							break;
+						case 2:		// fadeout
+							break;
+						case 3:		// fade in & out
+							break;
+						case 4:		// crossfade
+							break;
+						}
+
 					i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
 					b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
-					DWORD *pBmp=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*4),*pBmp1=pBmp;
-					int x,y;
-					for(y=0; y<rc2.bottom; y++) {
-						for(x=0; x<rc2.right; x++) {		// invertire colorback e scrivere dword, ma occhio alla fine!
-							*(BYTE*)pBmp1=LOBYTE(HIWORD(ColorBack));
-							*(((BYTE*)pBmp1)+1)=HIBYTE(LOWORD(ColorBack));
-							*(((BYTE*)pBmp1)+2)=LOBYTE(LOWORD(ColorBack));
-							pBmp1=(DWORD*)(((DWORD)pBmp1)+4);
-							}
-						}
-					b.SetBitmapBits((rc2.right*rc2.bottom*i)/8,pBmp);
-					GlobalFree(pBmp);
-					}
 
+					b.SetBitmapBits((rc2.right*rc2.bottom*i)/8,pBmpBack);		// ev separare colore sfondo da colore back dei caratteri...
 					writeTextToBitmap(&b,S,0,0,LOWORD(Align),HIWORD(Align),ColorFore,ColorBack,TextSize);
 
 //			b2.Resample(&b,&rc2);
@@ -1181,10 +1201,9 @@ void CText2vidApp::OnFileCreavideo() {
 					bmp.bmBits=GlobalAlloc(GMEM_FIXED,i);
 					i=b.GetBitmapBits(i,bmp.bmBits);
 					{
-					BYTE *pBmp1=(BYTE*)bmp.bmBits;
+					BYTE *pBmp1=(BYTE*)pBmpSeg;
 					int x,y;
-					for(y=0; y<rc2.bottom; y++) {
-//					for(y=rc2.bottom-1; y; y--) {
+					for(y=rc2.bottom-1; y; y--) {
 						BYTE *pBmp=((BYTE*)bmp.bmBits)+y*rc2.right*4   /* ev. pad dword ?*/;
 						for(x=0; x<rc2.right; x++) {
 							*(BYTE*)pBmp1=*(BYTE*)pBmp;
@@ -1195,17 +1214,17 @@ void CText2vidApp::OnFileCreavideo() {
 							}
 						}
 					}
-
 // non fa nulla cmq					biCompDef.bmiHeader.biHeight=-240;
 
 
 					pOut=(BYTE *)GlobalAlloc(GPTR,maxFrameSize+100);
 					t=l=0;
 					i=ICCompress(hICCo,ICCOMPRESS_KEYFRAME,
-						&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,bmp.bmBits,
-						&l,&t,0,0/*2500*/,5000 /*quality per ora fisso*/,
+						&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,pBmpSeg,
+						&l,&t,0,0/*2500*/,7500 /*quality per ora fisso*/,
 						NULL,NULL);
 					GlobalFree(bmp.bmBits);
+
 					if(i == ICERR_OK) {
 						BYTE j=DurataFrame*qfr[FpS];
 						while(j--) {
@@ -1222,7 +1241,7 @@ void CText2vidApp::OnFileCreavideo() {
 					GlobalFree(pOut);
 					b.DeleteObject();
 
-					} while(!S.IsEmpty());
+					} while(!S.IsEmpty() && vFrameNum4Save<10000);		// safety :)
 
 				resetInput();
 
@@ -1262,8 +1281,12 @@ errorSaveVideo:
 okSaveVideo:
 
 
-
-
+	if(pBmpSeg)
+		GlobalFree(pBmpSeg);
+	if(pBmpPrec)
+		GlobalFree(pBmpPrec);
+	if(pBmpBack)
+		GlobalFree(pBmpBack);
 	if(psVideo) {
 		myps=psVideo;
 		psVideo=NULL;
@@ -1304,6 +1327,8 @@ void CText2vidApp::OnOpzioniImmagini() {
 		ImageSize=cod.m_DimensioneImmagini;
 		FpS=cod.m_FpS;
 		DurataFrame=cod.m_Durata;
+		Transizione=cod.m_Transizione;
+
 		Align=MAKELONG(cod.m_AlignHoriz,cod.m_AlignVert);
 		}
 	

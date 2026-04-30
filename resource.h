@@ -27,6 +27,7 @@
 #define IDC_RADIO11                     1015
 #define IDC_EDIT2                       1016
 #define IDC_CHECK1                      1017
+#define IDC_COMBO2                      1018
 #define ID_OPZIONI_IMMAGINI             32771
 #define ID_FILE_CREAVIDEO               32772
 #define ID_FILE_CREAJPEG                32773
@@ -42,6 +43,7 @@
 #define IDS_ALIGNMENT                   61455
 #define IDS_FPS                         61456
 #define IDS_DURATA                      61457
+#define IDS_TRANSIZIONE                 61458
 
 // Next default values for new objects
 // 

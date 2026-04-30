@@ -286,6 +286,7 @@ struct VIDEO_SIZE {
 class CText2vidApp : public CWinAppEx {
 public:
 	static const struct VIDEO_SIZE qsv[4];
+	static const BYTE qfr[5];
 	COLORREF ColorFore,ColorBack;
 	WORD TextSize;
 	BYTE ImageSize;

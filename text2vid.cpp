@@ -30,6 +30,8 @@ BEGIN_MESSAGE_MAP(CText2vidApp, CWinApp)
 	ON_COMMAND(ID_FILE_CREAJPEG, OnFileCreajpeg)
 	ON_UPDATE_COMMAND_UI(ID_FILE_CREAVIDEO, OnUpdateFileCreavideo)
 	ON_UPDATE_COMMAND_UI(ID_FILE_CREAJPEG, OnUpdateFileCreajpeg)
+	ON_COMMAND(ID_VISUALIZZA_ANTEPRIMA, OnVisualizzaAnteprima)
+	ON_UPDATE_COMMAND_UI(ID_VISUALIZZA_ANTEPRIMA, OnUpdateVisualizzaAnteprima)
 	//}}AFX_MSG_MAP
 	// Standard file based document commands
 	ON_COMMAND(ID_FILE_NEW, CWinApp::OnFileNew)
@@ -41,11 +43,18 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CText2vidApp construction
 
-CText2vidApp::CText2vidApp()
-{
+const struct VIDEO_SIZE CText2vidApp::qsv[4]= {
+	{320,240},
+	{640,480},
+	{800,600},
+	{1024,768}
+	};
+const BYTE CText2vidApp::qfr[5]= { 1,2,5,10,25 };
+
+CText2vidApp::CText2vidApp() {
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
-}
+	}
 
 /////////////////////////////////////////////////////////////////////////////
 // The one and only CText2vidApp object
@@ -63,6 +72,9 @@ static const CLSID clsid =
 // CText2vidApp initialization
 
 BOOL CText2vidApp::InitInstance() {
+	int i;
+	char myBuf[256];
+	CString S;
 
 	// Initialize OLE libraries
 	if (!AfxOleInit()) {
@@ -101,10 +113,10 @@ BOOL CText2vidApp::InitInstance() {
 	{
 	CRect rc;		// qua cmq non lo uso... mettere RC in winApp??
 	int nFlags,nCmd;
-	rc.right=min(GetSystemMetrics(SM_CXSCREEN)-24,800);
+/*	rc.right=min(GetSystemMetrics(SM_CXSCREEN)-24,800);
 	rc.bottom=min(GetSystemMetrics(SM_CYSCREEN)-48,600);
 	rc.left=220;
-	rc.top=120;
+	rc.top=120;*/
 	if(theApp.m_bLoadWindowPlacement)
 		theApp.LoadWindowPlacement(rc,nFlags,nCmd);
 	}
@@ -138,10 +150,32 @@ BOOL CText2vidApp::InitInstance() {
 	if(!ProcessShellCommand(cmdInfo))
 		return FALSE;
 
-	ColorFore=RGB(255,255,255);
-	ColorFore=RGB(255,255,0);
-	ColorBack=RGB(0,0,0);
-	TextSize=32;
+  outputFile=GetString(MAKEINTRESOURCE(IDS_NOMEFILE));
+	if(outputFile.IsEmpty())
+		outputFile="image";
+	ColorFore=GetInt(MAKEINTRESOURCE(IDS_COLOREFORE));
+	if(!ColorFore)
+		ColorFore=RGB(255,255,255);
+	ColorBack=GetInt(MAKEINTRESOURCE(IDS_COLOREBACK));
+	if(!ColorBack)			// :)
+		ColorBack=RGB(0,0,0);
+  Font=GetString(MAKEINTRESOURCE(IDS_FONT));
+	if(Font.IsEmpty())
+		Font="Arial";
+
+	Align=GetInt(MAKEINTRESOURCE(IDS_ALIGNMENT));
+	TextSize=GetInt(MAKEINTRESOURCE(IDS_TEXTSIZE));
+	if(!TextSize)
+		TextSize=32;
+	ImageSize=GetInt(MAKEINTRESOURCE(IDS_IMGSIZE));
+	if(!ImageSize)
+		ImageSize=0;		// :) 320*240
+	FpS=GetInt(MAKEINTRESOURCE(IDS_FPS));		// 0 è ok
+	DurataFrame=GetInt(MAKEINTRESOURCE(IDS_DURATA));
+	if(!DurataFrame)
+		DurataFrame=1;
+	
+	bPreview=GetInt(MAKEINTRESOURCE(IDS_PREVIEW));
 
 	// The one and only window has been initialized, so show and update it.
 	m_pMainWnd->ShowWindow(SW_SHOW);
@@ -269,7 +303,7 @@ CProfileStore::CProfileStore(HINSTANCE h,CString s) {
 
 	m_hInstance=h;
 	theRoot=/* HKEY_CURRENT_USER */ HKEY_LOCAL_MACHINE;
-	variabiliKey=_T("variabili");
+	variabiliKey=_T("");
 	regRoot=s;
 #ifndef _CPRIVATEPROFILE_USEINI
 	regRoot+="\\";
@@ -296,8 +330,9 @@ CString CProfileStore::getVariabiliKey() const {
 #ifdef _CPRIVATEPROFILE_USEINI
 	s=variabiliKey;
 #else
-	s=regRoot;
-	s+=variabiliKey;
+//	s=regRoot;		bah no... 2026
+//	s+=variabiliKey;
+	s=variabiliKey;		
 #endif
 	return s;
 	}
@@ -417,7 +452,7 @@ int CProfileStore::GetPrivateProfileString(const TCHAR *s, CString k, TCHAR *v, 
 		*v=0;
 	if(!RegOpenKeyEx(theRoot,mainSubKey,0L,KEY_READ,&pk)) {
 		if(!RegOpenKeyEx(pk,myBuf,0L,KEY_READ,&pksub)) {
-			retVal=RegQueryValueEx(pksub,k,0,NULL /*&vType*/,(BYTE *)v,&vLen);
+			retVal=RegQueryValueEx(pksub,k,0,NULL /*&vType*/,(BYTE*)v,&vLen);
 			if(retVal == ERROR_SUCCESS)
 				;
 			else
@@ -606,14 +641,10 @@ int CWinAppEx::StoreWindowPlacement(const CRect& rectNormalPosition,int nFlags,i
 	return 1;
 	}
 int CWinAppEx::LoadWindowPlacement(class CRect &rc,int &n,int &n2) {
-	char myBuf[128];
+	CString S;
 
-	prStore->GetProfileVariabileString(IDS_COORDINATE,myBuf,32,"10,10,780,580");
-	sscanf(myBuf,"%d,%d,%d,%d",&rc.left,&rc.top,&rc.right,&rc.bottom);
-//	if(!IsRectEmpty(&rc))
-//		m_pMainWnd->SetWindowPos(NULL,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER);
-
-	return 1;
+	S=GetString(MAKEINTRESOURCE(IDS_COORDINATE),"20,20");
+	return sscanf((LPCTSTR)S,"%d,%d,%d,%d",&rc.left,&rc.top,&rc.right,&rc.bottom);
 	}
 void CWinAppEx::OnClosingMainFrame() {
 	CRect r;
@@ -677,9 +708,9 @@ int CWinAppEx::GetInt(LPCTSTR lpszEntry, int nDefault) {
 CString CWinAppEx::GetString(LPCTSTR lpszEntry, LPCTSTR lpszDefault) {
 	char myBuf[256];
 	CString S;
-	myBuf[0]=0;
+	myBuf[0]=myBuf[1]=0;
 	if(prStore)
-		return prStore->GetPrivateProfileString(prStore->getVariabiliKey(), lpszEntry, myBuf,255, lpszDefault);
+		prStore->GetPrivateProfileString(prStore->getVariabiliKey(), lpszEntry, myBuf,255, lpszDefault);
 	S=myBuf;
 	return S;
 	}
@@ -690,7 +721,7 @@ int CWinAppEx::GetSectionInt(LPCTSTR lpszSubSection, LPCTSTR lpszEntry, int nDef
 CString CWinAppEx::GetSectionString(LPCTSTR lpszSubSection, LPCTSTR lpszEntry, LPCTSTR lpszDefault) {
 	char myBuf[256];
 	CString S;
-	myBuf[0]=0;
+	myBuf[0]=myBuf[1]=0;
 	if(prStore) {
 		prStore->GetPrivateProfileString(lpszSubSection,lpszEntry,myBuf,255,lpszDefault);
 		}
@@ -733,20 +764,18 @@ protected:
 		// No message handlers
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-};
+	};
 
-CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
-{
+CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD) {
 	//{{AFX_DATA_INIT(CAboutDlg)
 	//}}AFX_DATA_INIT
-}
+	}
 
-void CAboutDlg::DoDataExchange(CDataExchange* pDX)
-{
+void CAboutDlg::DoDataExchange(CDataExchange* pDX) {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CAboutDlg)
 	//}}AFX_DATA_MAP
-}
+	}
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 	//{{AFX_MSG_MAP(CAboutDlg)
@@ -755,11 +784,11 @@ BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 END_MESSAGE_MAP()
 
 // App command to run the dialog
-void CText2vidApp::OnAppAbout()
-{
+void CText2vidApp::OnAppAbout() {
 	CAboutDlg aboutDlg;
 	aboutDlg.DoModal();
-}
+	}
+
 
 /////////////////////////////////////////////////////////////////////////////
 // CText2vidApp message handlers
@@ -768,6 +797,7 @@ int CText2vidApp::writeTextToBitmap(const CBitmap *b,const char *s,int x,int y,B
 																		COLORREF colorf,COLORREF colorb,WORD size) {
 	int xSize,ySize;
 	int i,n;
+	DWORD flags;
 //	BYTE *p,*p1;
 	CFont myFont,*oldFont;
 	CDC *dc,dc1;
@@ -783,7 +813,7 @@ int CText2vidApp::writeTextToBitmap(const CBitmap *b,const char *s,int x,int y,B
 	xSize=bmp.bmWidth/4,ySize=bmp.bmHeight/2;		// mah, tanto per autoadeguarsi ... ad altezza
 
   myFont.CreateFont(size,0,0,0,FW_NORMAL,0,0,0,DEFAULT_CHARSET,
-		OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,"Arial");
+		OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,DEFAULT_QUALITY,DEFAULT_PITCH,Font);
 	dc=theApp.m_pMainWnd->GetDC();
 //	dc=GetDesktopDC();
 	dc1.CreateCompatibleDC(dc);
@@ -807,12 +837,36 @@ int CText2vidApp::writeTextToBitmap(const CBitmap *b,const char *s,int x,int y,B
 	i=dc1.DrawText(s,&sz,DT_CALCRECT);
 	sz.bottom=i;
 
+	flags=0;
 //	i=dc1.TextOut(x,y,s,_tcslen(s));
-	i=dc1.DrawText(s,&rc,DT_VCENTER | DT_CENTER);
+	switch(ha) {
+		case 0:
+			flags |= DT_LEFT;
+			break;
+		case 1:
+		case 3:		// per ora...
+			flags |= DT_CENTER;
+			break;
+		case 2:
+			flags |= DT_RIGHT;
+			break;
+		}
+	// DT_VCENTER  solo se single line
+	switch(va) {
+		case 0:
+			break;
+		case 1:
+			rc.top=(rc.bottom-sz.bottom)/2;
+			break;
+		case 2:
+			rc.top=rc.bottom-sz.bottom;
+			break;
+		}
+	i=dc1.DrawText(s,&rc,flags);
 
 
 
-	{
+	if(bPreview) {
 		CDC dc2;
 		CBitmap *pBitmap;
 	CBitmap *oldB;
@@ -845,7 +899,6 @@ salva_non_ok: ;
 	}
 
 void CText2vidApp::OnFileCreajpeg() {
-	BITMAPINFOHEADER biRawBitmap;
 	BITMAPINFO biRawDef,biCompDef;
 	char myBuf[256],myBuf2[256];
   int i,n;
@@ -867,82 +920,90 @@ void CText2vidApp::OnFileCreajpeg() {
 	CCreaDlg ccd;
 
 	if(ccd.DoModal() == IDOK) {
-			CBitmap b;
-			CExBitmap b2;
-			BITMAP bmp;
+		CBitmap b;
+		BITMAP bmp;
 
 
-			biRawDef.bmiHeader.biWidth=320;
-			biRawDef.bmiHeader.biHeight=240;
-			biRawDef.bmiHeader.biClrUsed=biRawDef.bmiHeader.biClrImportant=0;
-			biRawDef.bmiHeader.biCompression=BI_RGB;
-			biRawDef.bmiHeader.biPlanes=1;
-			biRawDef.bmiHeader.biXPelsPerMeter=biRawDef.bmiHeader.biYPelsPerMeter=0;;
-			biRawDef.bmiHeader.biBitCount=24;
-			biRawDef.bmiHeader.biSizeImage=(biRawDef.bmiHeader.biWidth*biRawDef.bmiHeader.biHeight*biRawDef.bmiHeader.biBitCount)/8;
+		biRawDef.bmiHeader.biWidth=qsv[ImageSize].imageSize.cx;
+		biRawDef.bmiHeader.biHeight=qsv[ImageSize].imageSize.cy;
+		biRawDef.bmiHeader.biClrUsed=biRawDef.bmiHeader.biClrImportant=0;
+		biRawDef.bmiHeader.biCompression=BI_RGB;
+		biRawDef.bmiHeader.biPlanes=1;
+		biRawDef.bmiHeader.biXPelsPerMeter=biRawDef.bmiHeader.biYPelsPerMeter=0;;
+		biRawDef.bmiHeader.biBitCount=32;
+		biRawDef.bmiHeader.biSizeImage=(biRawDef.bmiHeader.biWidth*biRawDef.bmiHeader.biHeight*biRawDef.bmiHeader.biBitCount)/8;
 
-			biCompDef=biRawDef;
+		biCompDef=biRawDef;
 
 
 //			i=b.LoadBitmap(IDB_MONOSCOPIO);
-	
-			rc2.top=rc2.left=0;
-			rc2.bottom=biCompDef.bmiHeader.biHeight;
-			rc2.right=biCompDef.bmiHeader.biWidth;
-			b2.CreateBitmap(&rc2);
+
+		rc2.top=rc2.left=0;
+		rc2.bottom=biCompDef.bmiHeader.biHeight;
+		rc2.right=biCompDef.bmiHeader.biWidth;
 
 
-			n=0;
-			do {
-				S=readString();
-				if(S.IsEmpty())
-					break;
+		n=0;
+		do {
+			S=readString();
+			if(S.IsEmpty())
+				break;
 
-				{
-				i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
-				b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
-				//b.SetBitmapBits(0,rc2.right*rc2.bottom*i/4);
+			{
+			i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
+			b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
+			DWORD *pBmp=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*4),*pBmp1=pBmp;
+			int x,y;
+			for(y=0; y<rc2.bottom; y++) {
+				for(x=0; x<rc2.right; x++) {
+					*(BYTE*)pBmp1=LOBYTE(HIWORD(ColorBack));
+					*(((BYTE*)pBmp1)+1)=HIBYTE(LOWORD(ColorBack));
+					*(((BYTE*)pBmp1)+2)=LOBYTE(LOWORD(ColorBack));
+					pBmp1=(DWORD*)(((DWORD)pBmp1)+4);
+					}
 				}
-				writeTextToBitmap(&b,S /*"culo"*/,0,0,0,0,ColorFore,ColorBack,TextSize);
+			b.SetBitmapBits((rc2.right*rc2.bottom*i)/8,pBmp);
+			GlobalFree(pBmp);
+			}
+			writeTextToBitmap(&b,S /*"culo"*/,0,0,LOWORD(Align),HIWORD(Align),ColorFore,ColorBack,TextSize);
 
-				CJpeg *myJPEG;
-				CString S2=CTime::GetCurrentTime().Format("text2vid_%d_%m_%Y_%H_%M");
+			CJpeg *myJPEG;
+			CString S2=CTime::GetCurrentTime().Format("text2vid_%d_%m_%Y_%H_%M");
 
-				theApp.getVersione(myBuf2);
-				myJPEG=new CJpeg(myBuf2);
+			theApp.getVersione(myBuf2);
+			myJPEG=new CJpeg(myBuf2);
 //				p1=myJPEG->buildJPEG(IDB_MONOSCOPIO,&len,75);
-				p1=myJPEG->buildJPEG(&b,&len,FALSE,70,S2,0,inputFile /*"text2vid"*/);
+			p1=myJPEG->buildJPEG(&b,&len,FALSE,70,S2,0,inputFile /*"text2vid"*/);
 
-				S2.Format("%s_%02u.jpg",ccd.m_NomeFile,n++);
-				mF.Open(S2,CFile::modeCreate | CFile::modeWrite);
-				mF.Write(p1,len);
-				mF.Close();
+			S2.Format("%s_%03u.jpg",ccd.m_NomeFile,n++);
+			mF.Open(S2,CFile::modeCreate | CFile::modeWrite);
+			mF.Write(p1,len);
+			mF.Close();
 
-				b.DeleteObject();
-				HeapFree(GetProcessHeap(),0,p1);
-				delete myJPEG;
-				} while(!S.IsEmpty());
+			outputFile=ccd.m_NomeFile;
 
-			resetInput();
+			b.DeleteObject();
+			HeapFree(GetProcessHeap(),0,p1);
+			delete myJPEG;
+			} while(!S.IsEmpty());
 
-			((CMainFrame*)m_pMainWnd)->SetStatusText("fatto");
+		resetInput();
+
+		((CMainFrame*)m_pMainWnd)->SetStatusText("fatto");
 
 
-	retVal=1;
+		retVal=1;
 		}
 	
 	}
 
 void CText2vidApp::OnFileCreavideo() {
-	static BYTE *theFrame;
-	static BITMAPINFOHEADER biRawBitmap;
-	static BITMAPINFO biRawDef,biCompDef;
-	static PAVIFILE aviFile;
-	static PAVISTREAM psVideo, psAudio, psText;
-	static DWORD vFrameNum4Save,aFrameNum4Save,saveWait4KeyFrame;
-	static DWORD maxFrameSize;
-	static int framesPerSec=5 /*fisso per ora*/;
-	static HIC hICCo;
+	BITMAPINFO biRawDef,biCompDef;
+	PAVIFILE aviFile=NULL;
+	PAVISTREAM psVideo=NULL, psAudio=NULL, psText=NULL;
+	DWORD vFrameNum4Save,aFrameNum4Save,saveWait4KeyFrame;
+	DWORD maxFrameSize;
+	HIC hICCo=NULL;
 	char myBuf[256],myBuf2[256];
   int i,n;
 	int retVal;
@@ -955,7 +1016,7 @@ void CText2vidApp::OnFileCreavideo() {
 	HRESULT hr; 
 	AVICOMPRESSOPTIONS opts; 
 	LPAVICOMPRESSOPTIONS aopts[1] = {&opts}; 
-	PAVISTREAM myps;
+	PAVISTREAM myps=NULL;
 	DWORD dwTextFormat; 
 	DWORD compressor=mmioFOURCC('I','V','5','0');	/*fisso per ora*/
 	static int xSize,ySize,xSizeCap,ySizeCap;
@@ -964,103 +1025,53 @@ void CText2vidApp::OnFileCreavideo() {
 	BYTE *p,*p1;
 	CFile mF;
 	CString S;
+	CStringEx S2;
 
 	CCreaDlg ccd;
 
-	//if(ccd.DoModal() == IDOK) {
-//		}
+	if(ccd.DoModal() == IDOK) {
 
-			CBitmap b;
-			CExBitmap b2;
-			BITMAP bmp;
+		CBitmap b;
+		BITMAP bmp;
 
 
-			biRawDef.bmiHeader.biWidth=320;
-			biRawDef.bmiHeader.biHeight=240;
-			biRawDef.bmiHeader.biClrUsed=biRawDef.bmiHeader.biClrImportant=0;
-			biRawDef.bmiHeader.biCompression=BI_RGB;
-			biRawDef.bmiHeader.biPlanes=1;
-			biRawDef.bmiHeader.biXPelsPerMeter=biRawDef.bmiHeader.biYPelsPerMeter=0;;
-			biRawDef.bmiHeader.biBitCount=24;
-			biRawDef.bmiHeader.biSizeImage=(biRawDef.bmiHeader.biWidth*biRawDef.bmiHeader.biHeight*biRawDef.bmiHeader.biBitCount)/8;
+		biRawDef.bmiHeader.biWidth=qsv[ImageSize].imageSize.cx;
+		biRawDef.bmiHeader.biHeight=qsv[ImageSize].imageSize.cy;
+		biRawDef.bmiHeader.biClrUsed=biRawDef.bmiHeader.biClrImportant=0;
+		biRawDef.bmiHeader.biCompression=BI_RGB;
+		biRawDef.bmiHeader.biPlanes=1;
+		biRawDef.bmiHeader.biXPelsPerMeter=biRawDef.bmiHeader.biYPelsPerMeter=0;;
+		biRawDef.bmiHeader.biBitCount=24;		// sarebbero 32 ma poi non va... faccio io a mano, v.sotto
+		biRawDef.bmiHeader.biSizeImage=(biRawDef.bmiHeader.biWidth*biRawDef.bmiHeader.biHeight*biRawDef.bmiHeader.biBitCount)/8;
 
-			biCompDef=biRawDef;
 
 
 //			i=b.LoadBitmap(IDB_MONOSCOPIO);
-	
-			rc2.top=rc2.left=0;
-			rc2.bottom=biCompDef.bmiHeader.biHeight;
-			rc2.right=biCompDef.bmiHeader.biWidth;
-			b2.CreateBitmap(&rc2);
 
-			i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
-			b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
+		rc2.top=rc2.left=0;
+		rc2.bottom=biCompDef.bmiHeader.biHeight;
+		rc2.right=biCompDef.bmiHeader.biWidth;
 
-			do {
-				S=readString();
-				if(S.IsEmpty())
-					break;
-
-				writeTextToBitmap(&b,S,0,0,0,0,ColorFore,ColorBack,TextSize);
-
-				CJpeg *myJPEG;
-				CString S2=CTime::GetCurrentTime().Format("text2vid_%d_%m_%Y_%H_%M");
-
-				theApp.getVersione(myBuf2);
-				myJPEG=new CJpeg(myBuf2);
-//				p1=myJPEG->buildJPEG(IDB_MONOSCOPIO,&len,75);
-				p1=myJPEG->buildJPEG(&b,&len,FALSE,70,S2,0,inputFile /*"text2vid"*/);
-
-				mF.Open("prova.jpg",CFile::modeCreate | CFile::modeWrite);
-				mF.Write(p1,len);
-				mF.Close();
-
-				HeapFree(GetProcessHeap(),0,p1);
-				delete myJPEG;
-				} while(!S.IsEmpty());
-
-				resetInput();
-
-
-//			b2.Resample(&b,&rc2);
-
-			i=b2.GetBitmap(&bmp);
-			i=bmp.bmWidth*bmp.bmHeight*bmp.bmBitsPixel/8;
-			bmp.bmBits=GlobalAlloc(GMEM_FIXED,i);
-			b2.GetBitmapBits(i,bmp.bmBits);
-
-
-			((CMainFrame*)m_pMainWnd)->SetStatusText("fatto");
 
 
 		psVideo=NULL, psAudio=NULL, psText = NULL;
 		aviFile=NULL;
 
-/*					biRawBitmap.biSize=sizeof(BITMAPINFOHEADER);
-		biRawBitmap.biPlanes=1;
-		biRawBitmap.biCompression=0;
-		biRawBitmap.biSizeImage=0;
-		biRawBitmap.biXPelsPerMeter=biRawBitmap.biYPelsPerMeter=0;
-		biRawBitmap.biClrUsed=biRawBitmap.biClrImportant=0;
-		biRawBitmap.biWidth=320;
-		biRawBitmap.biHeight=240;
-		biRawBitmap.biBitCount=24;
-		già fatto... sopra */
-		maxFrameSize=(biRawBitmap.biWidth*biRawBitmap.biHeight*biRawBitmap.biBitCount)/8;
+		maxFrameSize=(biRawDef.bmiHeader.biWidth*biRawDef.bmiHeader.biHeight*biRawDef.bmiHeader.biBitCount)/8;
 
-		biRawDef.bmiHeader=biRawBitmap;
 		biCompDef=biRawDef;
-		biCompDef.bmiHeader=biRawBitmap;
+		biCompDef.bmiHeader=biRawDef.bmiHeader;
 		biCompDef.bmiHeader.biCompression=compressor;
 		biCompDef.bmiHeader.biBitCount=24;		// buono per IR50
+		biCompDef.bmiHeader.biSizeImage=(biCompDef.bmiHeader.biWidth*biCompDef.bmiHeader.biHeight*biCompDef.bmiHeader.biBitCount)/8;
 
 		AVIFileInit();  // Open the movie file for writing....
 
 		vFrameNum4Save=0;
 
+		S2.Format("%s.avi",ccd.m_NomeFile);
 		hr = AVIFileOpen(&aviFile,    // returned file pointer
-			NomeIn,            // file name
+			S2,            // file name
 			OF_WRITE | OF_CREATE,    // mode to open file with
 			NULL);    // use handler determined from file extension....
 		if(hr != AVIERR_OK)
@@ -1070,11 +1081,11 @@ void CText2vidApp::OnFileCreavideo() {
 		strhdr.fccType                = streamtypeVIDEO;// stream type
 		strhdr.fccHandler             = compressor;
 		strhdr.dwScale                = 1;
-		strhdr.dwRate                 = framesPerSec;
+		strhdr.dwRate                 = qfr[FpS];
 		strhdr.dwSuggestedBufferSize  = maxFrameSize;
 		SetRect(&strhdr.rcFrame, 0, 0,    // rectangle for stream
-					(int) biCompDef.bmiHeader.biWidth,
-					(int) biCompDef.bmiHeader.biHeight);  // And create the stream;
+					(int)biCompDef.bmiHeader.biWidth,
+					(int)-biCompDef.bmiHeader.biHeight);  // And create the stream;
 		hr = AVIFileCreateStream(aviFile,    // file pointer
 													 &myps,    // returned stream pointer
 													 &strhdr);    // stream header
@@ -1084,9 +1095,9 @@ void CText2vidApp::OnFileCreavideo() {
 		if(hr != AVIERR_OK) 
 			goto errorSaveVideo;
 
-	//	ZeroMemory(&opts, sizeof(opts));
-	//	if(!AVISaveOptions(NULL, 0, 1, &myps, (LPAVICOMPRESSOPTIONS FAR *) &aopts))
-	//		goto errorSaveVideo;
+//	ZeroMemory(&opts, sizeof(opts));
+//	if(!AVISaveOptions(NULL, 0, 1, &myps, (LPAVICOMPRESSOPTIONS FAR *) &aopts))
+//		goto errorSaveVideo;
 
 #if 0			
 
@@ -1097,8 +1108,8 @@ void CText2vidApp::OnFileCreavideo() {
 		strhdr.dwRate                 = 1;
 		strhdr.dwSuggestedBufferSize  = 25;
 		SetRect(&strhdr.rcFrame, 0, (int) biCompDef.bmiHeader.biHeight,
-					(int) biCompDef.bmiHeader.biWidth,     
-					(int) biCompDef.bmiHeader.biHeight+(biCompDef.bmiHeader.biHeight/8));  // And create the stream; 
+					(int)biCompDef.bmiHeader.biWidth,     
+					(int)biCompDef.bmiHeader.biHeight+(biCompDef.bmiHeader.biHeight/8));  // And create the stream; 
 		hr = AVIFileCreateStream(aviFile, &psText, &strhdr); 
 		if(hr != AVIERR_OK) 
 			goto errorSaveVideo; 
@@ -1108,12 +1119,11 @@ void CText2vidApp::OnFileCreavideo() {
 			goto errorSaveVideo;
 #endif
 
-		if(1 /* solo quando accodo...*/)	{
+		{
 			long n;
 			int x,y;
 			DWORD t,l;
 			CBitmap b;
-			CExBitmap b2;
 			BITMAP bmp;
 			BYTE *p,*p2,*p3,*pOut;
 			RECT rc2;
@@ -1129,60 +1139,96 @@ void CText2vidApp::OnFileCreavideo() {
 				p+=3;
 				}*/
 
-			i=b.LoadBitmap(IDB_MONOSCOPIO);
-
-			rc2.top=rc2.left=0;
-			rc2.bottom=biCompDef.bmiHeader.biHeight;
-			rc2.right=biCompDef.bmiHeader.biWidth;
-			b2.CreateBitmap(&rc2);
-			b2.Resample(&b,&rc2);
-
-			i=b2.GetBitmap(&bmp);
-			i=bmp.bmWidth*bmp.bmHeight*bmp.bmBitsPixel/8;
-			bmp.bmBits=GlobalAlloc(GMEM_FIXED,i);
-			b2.GetBitmapBits(i,bmp.bmBits);
-
-
-			// vorrei o un monoscopio con la data e l'ora, o almeno uno sfondo colorato con data e ora
-//						superImposeDateTime(&biRawDef.bmiHeader,(BYTE *)bmp.bmBits);
 
 			hICCo=ICOpen(ICTYPE_VIDEO,compressor,ICMODE_FASTCOMPRESS);
 			if(hICCo) {
-		/*		CString info;
-				ICINFO icinfo;
-				ICGetInfo(hICCo,&icinfo,sizeof(ICINFO));
-				info+=icinfo.dwFlags & VIDCF_CRUNCH ? "supporta compressione a una dimensione data; " : "";
-				info+=icinfo.dwFlags & VIDCF_DRAW ? "supporta drawing; " : "";
-				info+=icinfo.dwFlags & VIDCF_FASTTEMPORALC ? "supporta compressione temporale e conserva copia dei dati; " : "";
-				info+=icinfo.dwFlags & VIDCF_FASTTEMPORALD ? "supporta decompressione temporale e conserva copia dei dati; " : "";
-				info+=icinfo.dwFlags & VIDCF_QUALITY ? "supporta impostazione qualità; " : "";
-				info+=icinfo.dwFlags & VIDCF_TEMPORAL ? "supporta compressione inter-frame; " : "";
-				AfxMessageBox(info);*/
 
-				maxFrameSize=ICCompressGetSize(hICCo,&biRawBitmap,&biCompDef);
-				i=ICCompressBegin(hICCo,&biRawBitmap,&biCompDef);
+				rc2.top=rc2.left=0;
+				rc2.bottom=biCompDef.bmiHeader.biHeight;
+				rc2.right=biCompDef.bmiHeader.biWidth;
 
-				pOut=(BYTE *)GlobalAlloc(GPTR,maxFrameSize+100);
-				t=l=0;
-				i=ICCompress(hICCo,ICCOMPRESS_KEYFRAME,
-					&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,bmp.bmBits,
-					&l,&t,0,0/*2500*/,5000 /*quality per ora fisso*/,
-					NULL,NULL);
-				GlobalFree(bmp.bmBits);
-				if(i == ICERR_OK) {
-					vFrameNum4Save=AVIStreamLength(myps);
-					for(i=0; i<framesPerSec; i++) {		// sempre 1 sec.
-						n=AVIStreamWrite(myps,// stream pointer 
-							vFrameNum4Save, // time of this frame 
-							1,// number to write 
-							pOut,
-							biCompDef.bmiHeader.biSizeImage,
-							t, // flags.... 
-							NULL, NULL);
-						vFrameNum4Save++;
+				maxFrameSize=ICCompressGetSize(hICCo,&biRawDef,&biCompDef);
+				i=ICCompressBegin(hICCo,&biRawDef,&biCompDef);
+
+				do {
+					S=readString();
+					if(S.IsEmpty())
+						break;
+
+					{
+					i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
+					b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
+					DWORD *pBmp=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*4),*pBmp1=pBmp;
+					int x,y;
+					for(y=0; y<rc2.bottom; y++) {
+						for(x=0; x<rc2.right; x++) {		// invertire colorback e scrivere dword, ma occhio alla fine!
+							*(BYTE*)pBmp1=LOBYTE(HIWORD(ColorBack));
+							*(((BYTE*)pBmp1)+1)=HIBYTE(LOWORD(ColorBack));
+							*(((BYTE*)pBmp1)+2)=LOBYTE(LOWORD(ColorBack));
+							pBmp1=(DWORD*)(((DWORD)pBmp1)+4);
+							}
+						}
+					b.SetBitmapBits((rc2.right*rc2.bottom*i)/8,pBmp);
+					GlobalFree(pBmp);
+					}
+
+					writeTextToBitmap(&b,S,0,0,LOWORD(Align),HIWORD(Align),ColorFore,ColorBack,TextSize);
+
+//			b2.Resample(&b,&rc2);
+
+					i=b.GetBitmap(&bmp);
+					i=bmp.bmWidth*bmp.bmHeight*bmp.bmBitsPixel/8;
+					bmp.bmBits=GlobalAlloc(GMEM_FIXED,i);
+					i=b.GetBitmapBits(i,bmp.bmBits);
+					{
+					BYTE *pBmp1=(BYTE*)bmp.bmBits;
+					int x,y;
+					for(y=0; y<rc2.bottom; y++) {
+//					for(y=rc2.bottom-1; y; y--) {
+						BYTE *pBmp=((BYTE*)bmp.bmBits)+y*rc2.right*4   /* ev. pad dword ?*/;
+						for(x=0; x<rc2.right; x++) {
+							*(BYTE*)pBmp1=*(BYTE*)pBmp;
+							*(((BYTE*)pBmp1)+1)=*(((BYTE*)pBmp)+1);
+							*(((BYTE*)pBmp1)+2)=*(((BYTE*)pBmp)+2);
+							pBmp=pBmp+4;
+							pBmp1=pBmp1+3;
+							}
 						}
 					}
-				GlobalFree(pOut);
+
+// non fa nulla cmq					biCompDef.bmiHeader.biHeight=-240;
+
+
+					pOut=(BYTE *)GlobalAlloc(GPTR,maxFrameSize+100);
+					t=l=0;
+					i=ICCompress(hICCo,ICCOMPRESS_KEYFRAME,
+						&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,bmp.bmBits,
+						&l,&t,0,0/*2500*/,5000 /*quality per ora fisso*/,
+						NULL,NULL);
+					GlobalFree(bmp.bmBits);
+					if(i == ICERR_OK) {
+						BYTE j=DurataFrame*qfr[FpS];
+						while(j--) {
+							n=AVIStreamWrite(myps,// stream pointer 
+								vFrameNum4Save, // time of this frame 
+								1,// number to write 
+								pOut,
+								biCompDef.bmiHeader.biSizeImage,
+								t, // flags.... 
+								NULL, NULL);
+							vFrameNum4Save++;
+							}
+						}
+					GlobalFree(pOut);
+					b.DeleteObject();
+
+					} while(!S.IsEmpty());
+
+				resetInput();
+
+
+				((CMainFrame*)m_pMainWnd)->SetStatusText("fatto");
+
 
 				}
 
@@ -1221,15 +1267,11 @@ okSaveVideo:
 	if(psVideo) {
 		myps=psVideo;
 		psVideo=NULL;
-//					DWORD ti=timeGetTime()+1000;
-//					while(ti>timeGetTime());		// aspetta che la routine callback video finisca eventualmente di salvare... MIGLIORARE!
 		AVIStreamClose(myps);
 		}
 	if(psAudio) {
 		myps=psAudio;
 		psAudio=NULL;
-//					DWORD ti=timeGetTime()+1000;
-//					while(ti>timeGetTime());		// aspetta che la routine callback finisca eventualmente di salvare... MIGLIORARE!
 		AVIStreamClose(myps);  
 		}
 	if(psText) 
@@ -1247,6 +1289,7 @@ okSaveVideo:
 	AVIFileExit(); 
 	retVal=1;
 
+		}
 
 	}
 
@@ -1254,8 +1297,38 @@ void CText2vidApp::OnOpzioniImmagini() {
 	COpzioniDlg cod;
 
 	if(cod.DoModal() == IDOK) {
+		ColorFore=cod.m_ForeColor;
+		ColorBack=cod.m_BackColor;
+		Font=cod.m_Font;
+		TextSize=cod.m_FontSize;
+		ImageSize=cod.m_DimensioneImmagini;
+		FpS=cod.m_FpS;
+		DurataFrame=cod.m_Durata;
+		Align=MAKELONG(cod.m_AlignHoriz,cod.m_AlignVert);
 		}
 	
+	}
+
+void CText2vidApp::OnUpdateFileCreavideo(CCmdUI* pCmdUI) {
+	
+	pCmdUI->Enable(!inputFile.IsEmpty());
+	}
+
+void CText2vidApp::OnUpdateFileCreajpeg(CCmdUI* pCmdUI) {
+
+	pCmdUI->Enable(!inputFile.IsEmpty());
+	}
+
+
+
+void CText2vidApp::OnVisualizzaAnteprima() {
+
+	bPreview=!bPreview;	
+	}
+
+void CText2vidApp::OnUpdateVisualizzaAnteprima(CCmdUI* pCmdUI) {
+	
+	pCmdUI->SetCheck(bPreview != 0);
 	}
 
 CDocument* CText2vidApp::OpenDocumentFile(LPCTSTR lpszFileName) {
@@ -1284,9 +1357,9 @@ CString CText2vidApp::readString() {
 			p=myFile.ReadString(myBuf,255);
 			S+=myBuf;
 			} while(p && *p != '\n');
-		if(S.Right(,1)=='\n')
+		if(S.Right(1)=='\n')
 			S=S.Left(S.GetLength() - 1);
-		if(S.Right(,1)=='\n')
+		if(S.Right(1)=='\n')
 			S=S.Left(S.GetLength() - 1);
 		inputPos=myFile.Seek(0,CFile::current);
 		myFile.Close();
@@ -1297,6 +1370,18 @@ CString CText2vidApp::readString() {
 int CText2vidApp::ExitInstance() {
 
 	SaveCustomState();
+
+	WriteString(MAKEINTRESOURCE(IDS_NOMEFILE),outputFile);
+	WriteInt(MAKEINTRESOURCE(IDS_COLOREFORE),ColorFore);
+	WriteInt(MAKEINTRESOURCE(IDS_COLOREBACK),ColorBack);
+	WriteInt(MAKEINTRESOURCE(IDS_ALIGNMENT),Align);
+  WriteString(MAKEINTRESOURCE(IDS_FONT),Font);
+
+	WriteInt(MAKEINTRESOURCE(IDS_TEXTSIZE),TextSize);
+	WriteInt(MAKEINTRESOURCE(IDS_IMGSIZE),ImageSize);
+	WriteInt(MAKEINTRESOURCE(IDS_FPS),FpS);
+	WriteInt(MAKEINTRESOURCE(IDS_DURATA),DurataFrame);
+	WriteInt(MAKEINTRESOURCE(IDS_PREVIEW),bPreview);
 	
 	return CWinAppEx::ExitInstance();
 	}
@@ -1939,15 +2024,5 @@ CStringEx CStringEx::FormatSize(DWORD dwFileSize) {
 	}
 
 
-
-void CText2vidApp::OnUpdateFileCreavideo(CCmdUI* pCmdUI) {
-	
-	pCmdUI->Enable(!inputFile.IsEmpty());
-	}
-
-void CText2vidApp::OnUpdateFileCreajpeg(CCmdUI* pCmdUI) {
-
-	pCmdUI->Enable(!inputFile.IsEmpty());
-	}
 
 

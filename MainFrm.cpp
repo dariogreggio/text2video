@@ -81,10 +81,23 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs) {
 	if(!CFrameWnd::PreCreateWindow(cs))
 		return FALSE;
 
-	cs.cx=min(GetSystemMetrics(SM_CXSCREEN)-24,800);
+/*	cs.cx=min(GetSystemMetrics(SM_CXSCREEN)-24,800);
 	cs.cy=min(GetSystemMetrics(SM_CYSCREEN)-48,600);
 	cs.x=220;
-	cs.y=120;
+	cs.y=120;*/
+	CRect rc;
+	int n,n2;
+	if(theApp.m_bLoadWindowPlacement)
+		theApp.LoadWindowPlacement(rc,n,n2);
+//	cs.x=rc.left;
+//	cs.y=rc.top;
+//	cs.cx=rc.right;
+//	cs.cy=rc.bottom;
+
+	cs.x=rc.left;
+	cs.y=rc.top;
+	cs.cy=rc.bottom-rc.top;
+	cs.cx=rc.right-rc.left;
 
 	return TRUE;
 	}

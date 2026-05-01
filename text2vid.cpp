@@ -175,6 +175,9 @@ BOOL CText2vidApp::InitInstance() {
 	if(!DurataFrame)
 		DurataFrame=1;
 	Transizione=GetInt(MAKEINTRESOURCE(IDS_TRANSIZIONE));
+	Codec=GetInt(MAKEINTRESOURCE(IDS_CODEC));
+	if(!Codec)
+		Codec=mmioFOURCC('I','V','5','0');
 	
 	bPreview=GetInt(MAKEINTRESOURCE(IDS_PREVIEW));
 
@@ -918,7 +921,9 @@ void CText2vidApp::OnFileCreajpeg() {
 
 	CCreaDlg ccd;
 
-	if(ccd.DoModal() == IDOK) {
+	S2=((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle();
+	_splitpath((LPCTSTR)S2,NULL,NULL,NomeIn,NULL);
+	if(ccd.DoModal(NomeIn,0) == IDOK) {
 		CBitmap b;
 		BITMAP bmp;
 
@@ -998,10 +1003,40 @@ void CText2vidApp::OnFileCreajpeg() {
 	
 	}
 
+BYTE *CText2vidApp::mergeImages(LPBITMAPINFOHEADER pBitmap,BYTE *image1,double val1,BYTE *image2,double val2,BYTE *imageOut) {
+	BYTE r1,g1,b1, r2,g2,b2, r3,g3,b3;
+	int x,y;
+	BYTE *pImg=imageOut;
+
+
+	for(y=0; y<pBitmap->biHeight; y++) {
+		for(x=0; x<pBitmap->biWidth; x++) {		// verificare pad dword...
+			r1=GetRValue(*(DWORD*)image1);
+			g1=GetGValue(*(DWORD*)image1);
+			b1=GetBValue(*(DWORD*)image1);
+			r2=GetRValue(*(DWORD*)image2);
+			g2=GetGValue(*(DWORD*)image2);
+			b2=GetBValue(*(DWORD*)image2);
+
+			r3=r1*val1+r2*val2;
+			g3=g1*val1+g2*val2;
+			b3=b1*val1+b2*val2;
+
+			*pImg++=b3;
+			*pImg++=g3;
+			*pImg++=r3;
+			image1+=3;
+			image2+=3;
+			}
+		}
+
+	return imageOut;
+	}
+
 void CText2vidApp::OnFileCreavideo() {
 	BITMAPINFO biRawDef,biCompDef;
-	PAVIFILE aviFile=NULL;
-	PAVISTREAM psVideo=NULL, psAudio=NULL, psText=NULL;
+	PAVIFILE aviFile;
+	PAVISTREAM psVideo, psAudio, psText;
 	DWORD vFrameNum4Save,aFrameNum4Save,saveWait4KeyFrame;
 	DWORD maxFrameSize;
 	HIC hICCo=NULL;
@@ -1019,20 +1054,21 @@ void CText2vidApp::OnFileCreavideo() {
 	LPAVICOMPRESSOPTIONS aopts[1] = {&opts}; 
 	PAVISTREAM myps=NULL;
 	DWORD dwTextFormat; 
-	DWORD compressor=mmioFOURCC('I','V','5','0');	/*fisso per ora*/
+//	DWORD compressor=mmioFOURCC('I','V','5','0');	/*fisso per ora*/
 	int xSize,ySize,xSizeCap,ySizeCap;
-	int tipoImg,subTipoImg;
+	double step1,step2,sstep;
 	DWORD l,len,ti;
 	BYTE *p,*p1;
-	DWORD *pBmpBack=NULL,*pBmpPrec=NULL,*pBmpSeg=NULL;
+	DWORD *pBmpBack=NULL,*pBmpText=NULL,*pBmpPrec=NULL,*pBmpSeg=NULL;
 	CFile mF;
 	CString S;
 	CStringEx S2;
 
 	CCreaDlg ccd;
 
-			// PRENDERE NOME DOCUMENTO INPUT!
-	if(ccd.DoModal() == IDOK) {
+	S2=((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle();
+	_splitpath((LPCTSTR)S2,NULL,NULL,NomeIn,NULL);
+	if(ccd.DoModal(NomeIn,1) == IDOK) {
 
 		CBitmap b;
 		BITMAP bmp;
@@ -1064,7 +1100,7 @@ void CText2vidApp::OnFileCreavideo() {
 
 		biCompDef=biRawDef;
 		biCompDef.bmiHeader=biRawDef.bmiHeader;
-		biCompDef.bmiHeader.biCompression=compressor;
+		biCompDef.bmiHeader.biCompression=theApp.Codec;
 		biCompDef.bmiHeader.biBitCount=24;		// buono per IR50
 		biCompDef.bmiHeader.biSizeImage=(biCompDef.bmiHeader.biWidth*biCompDef.bmiHeader.biHeight*biCompDef.bmiHeader.biBitCount)/8;
 
@@ -1073,16 +1109,17 @@ void CText2vidApp::OnFileCreavideo() {
 		vFrameNum4Save=0;
 
 		S2.Format("%s.avi",ccd.m_NomeFile);
+		remove(S2);		// non cancella MAI il file precedente... €£$%&
 		hr = AVIFileOpen(&aviFile,    // returned file pointer
 			S2,            // file name
-			OF_WRITE | OF_CREATE,    // mode to open file with
+			/*OF_WRITE | */ OF_CREATE | OF_SHARE_EXCLUSIVE,    // mode to open file with
 			NULL);    // use handler determined from file extension....
 		if(hr != AVIERR_OK)
 			goto errorSaveVideo;
 		
 		ZeroMemory(&strhdr, sizeof(strhdr));
 		strhdr.fccType                = streamtypeVIDEO;// stream type
-		strhdr.fccHandler             = compressor;
+		strhdr.fccHandler             = theApp.Codec;
 		strhdr.dwScale                = 1;
 		strhdr.dwRate                 = qfr[FpS];
 		strhdr.dwSuggestedBufferSize  = maxFrameSize;
@@ -1090,8 +1127,8 @@ void CText2vidApp::OnFileCreavideo() {
 					(int)biCompDef.bmiHeader.biWidth,
 					(int)-biCompDef.bmiHeader.biHeight);  // And create the stream;
 		hr = AVIFileCreateStream(aviFile,    // file pointer
-													 &myps,    // returned stream pointer
-													 &strhdr);    // stream header
+														 &myps,    // returned stream pointer
+														 &strhdr);    // stream header
 		if(hr != AVIERR_OK)
 			goto errorSaveVideo;
 		hr = AVIStreamSetFormat(myps, 0, &biCompDef.bmiHeader, sizeof(BITMAPINFOHEADER)); 
@@ -1143,7 +1180,7 @@ void CText2vidApp::OnFileCreavideo() {
 				}*/
 
 
-			hICCo=ICOpen(ICTYPE_VIDEO,compressor,ICMODE_FASTCOMPRESS);
+			hICCo=ICOpen(ICTYPE_VIDEO,theApp.Codec,ICMODE_FASTCOMPRESS);
 			if(hICCo) {
 
 				rc2.top=rc2.left=0;
@@ -1166,27 +1203,37 @@ void CText2vidApp::OnFileCreavideo() {
 				}
 				pBmpPrec=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
 				pBmpSeg=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
+				pBmpText=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
 
 				maxFrameSize=ICCompressGetSize(hICCo,&biRawDef,&biCompDef);
 				i=ICCompressBegin(hICCo,&biRawDef,&biCompDef);
 
+				switch(Transizione) {
+					case 0:		// nulla
+						step1=step2=0;
+						sstep=0;
+						break;
+					case 1:		// fadein
+						step1=0; step2=1;
+						sstep=1.0/(qfr[FpS]+1);
+						break;
+					case 2:		// fadeout
+						step1=1; step2=0;
+						sstep=1.0/(qfr[FpS]+1);
+						break;
+					case 3:		// fade in & out
+						step1=0; step2=1;
+						sstep=1.0/(qfr[FpS]+1);
+						break;
+					case 4:		// crossfade
+						step1=1; step2=0;
+						sstep=1.0/(qfr[FpS]+1);
+						break;
+					}
 				do {
 					S=readString();
 					if(S.IsEmpty())
 						break;
-
-					switch(Transizione) {
-						case 0:		// nulla
-							break;
-						case 1:		// fadein
-							break;
-						case 2:		// fadeout
-							break;
-						case 3:		// fade in & out
-							break;
-						case 4:		// crossfade
-							break;
-						}
 
 					i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
 					b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
@@ -1201,7 +1248,7 @@ void CText2vidApp::OnFileCreavideo() {
 					bmp.bmBits=GlobalAlloc(GMEM_FIXED,i);
 					i=b.GetBitmapBits(i,bmp.bmBits);
 					{
-					BYTE *pBmp1=(BYTE*)pBmpSeg;
+					BYTE *pBmp1=(BYTE*)pBmpText;
 					int x,y;
 					for(y=rc2.bottom-1; y; y--) {
 						BYTE *pBmp=((BYTE*)bmp.bmBits)+y*rc2.right*4   /* ev. pad dword ?*/;
@@ -1218,28 +1265,116 @@ void CText2vidApp::OnFileCreavideo() {
 
 
 					pOut=(BYTE *)GlobalAlloc(GPTR,maxFrameSize+100);
-					t=l=0;
-					i=ICCompress(hICCo,ICCOMPRESS_KEYFRAME,
-						&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,pBmpSeg,
-						&l,&t,0,0/*2500*/,7500 /*quality per ora fisso*/,
-						NULL,NULL);
-					GlobalFree(bmp.bmBits);
 
-					if(i == ICERR_OK) {
-						BYTE j=DurataFrame*qfr[FpS];
+					{
+						BYTE j,j1;
+
+						j=qfr[FpS];// durano SEMPRE 1 Secondo per ora
+						j1=ICCOMPRESS_KEYFRAME;
+
 						while(j--) {
-							n=AVIStreamWrite(myps,// stream pointer 
-								vFrameNum4Save, // time of this frame 
-								1,// number to write 
-								pOut,
-								biCompDef.bmiHeader.biSizeImage,
-								t, // flags.... 
-								NULL, NULL);
-							vFrameNum4Save++;
+							switch(Transizione) {
+								case 1:		// fadein
+								case 3:		// fade in & out
+									step1+=sstep;
+									step2-=sstep;
+									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpBack,step1,(BYTE*)pBmpText,step2,(BYTE*)pBmpSeg);
+									break;
+								case 4:		// crossfade
+									step1-=sstep;
+									step2+=sstep;
+									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpPrec,step1,(BYTE*)pBmpText,step2,(BYTE*)pBmpSeg);
+									break;
+								default:
+									continue;
+									break;
+								}
+
+							t=l=0;
+							i=ICCompress(hICCo,j1,
+								&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,pBmpSeg,
+								&l,&t,0,0/*2500*/,7500 /*quality per ora fisso*/,
+								NULL,NULL);
+							if(i == ICERR_OK) {
+								n=AVIStreamWrite(myps,// stream pointer 
+									vFrameNum4Save, // time of this frame 
+									1,// number to write 
+									pOut,
+									biCompDef.bmiHeader.biSizeImage,
+									t, // flags.... 
+									NULL, NULL);
+								vFrameNum4Save++;
+								j1=0;
+								}
+							}
+
+						j=DurataFrame*qfr[FpS];
+						j1=ICCOMPRESS_KEYFRAME;
+						while(j--) {
+							t=l=0;
+							i=ICCompress(hICCo,j1,
+								&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,pBmpText,
+								&l,&t,0,0/*2500*/,7500 /*quality per ora fisso*/,
+								NULL,NULL);
+							if(i == ICERR_OK) {
+								n=AVIStreamWrite(myps,// stream pointer 
+									vFrameNum4Save, // time of this frame 
+									1,// number to write 
+									pOut,
+									biCompDef.bmiHeader.biSizeImage,
+									t, // flags.... 
+									NULL, NULL);
+								vFrameNum4Save++;
+								j1=0;
+								}
 							}
 						}
+
+					{
+						BYTE j,j1;
+
+						j=qfr[FpS];// durano SEMPRE 1 Secondo per ora
+						j1=ICCOMPRESS_KEYFRAME;
+
+						while(j--) {
+							switch(Transizione) {
+								case 2:		// fadeout
+								case 3:		// fade in & out
+									step1-=sstep;
+									step2+=sstep;
+									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpText,step1,(BYTE*)pBmpBack,step2,(BYTE*)pBmpSeg);
+									break;
+								case 0:		// nulla
+								case 1:		// fadein
+								case 4:		// crossfade
+									continue;
+									break;
+								}
+
+							t=l=0;
+							i=ICCompress(hICCo,j1,
+								&biCompDef.bmiHeader,pOut,&biRawDef.bmiHeader,pBmpSeg,
+								&l,&t,0,0/*2500*/,7500 /*quality per ora fisso*/,
+								NULL,NULL);
+							if(i == ICERR_OK) {
+								n=AVIStreamWrite(myps,// stream pointer 
+									vFrameNum4Save, // time of this frame 
+									1,// number to write 
+									pOut,
+									biCompDef.bmiHeader.biSizeImage,
+									t, // flags.... 
+									NULL, NULL);
+								vFrameNum4Save++;
+								j1=0;
+								}
+							}
+					}
+
 					GlobalFree(pOut);
+					GlobalFree(bmp.bmBits);
 					b.DeleteObject();
+
+					memcpy(pBmpPrec,pBmpSeg,biRawDef.bmiHeader.biSizeImage);
 
 					} while(!S.IsEmpty() && vFrameNum4Save<10000);		// safety :)
 
@@ -1285,6 +1420,8 @@ okSaveVideo:
 		GlobalFree(pBmpSeg);
 	if(pBmpPrec)
 		GlobalFree(pBmpPrec);
+	if(pBmpText)
+		GlobalFree(pBmpText);
 	if(pBmpBack)
 		GlobalFree(pBmpBack);
 	if(psVideo) {
@@ -1328,6 +1465,7 @@ void CText2vidApp::OnOpzioniImmagini() {
 		FpS=cod.m_FpS;
 		DurataFrame=cod.m_Durata;
 		Transizione=cod.m_Transizione;
+		Codec=cod.m_CompressorV;
 
 		Align=MAKELONG(cod.m_AlignHoriz,cod.m_AlignVert);
 		}
@@ -1406,6 +1544,8 @@ int CText2vidApp::ExitInstance() {
 	WriteInt(MAKEINTRESOURCE(IDS_IMGSIZE),ImageSize);
 	WriteInt(MAKEINTRESOURCE(IDS_FPS),FpS);
 	WriteInt(MAKEINTRESOURCE(IDS_DURATA),DurataFrame);
+	WriteInt(MAKEINTRESOURCE(IDS_TRANSIZIONE),Transizione);
+	WriteInt(MAKEINTRESOURCE(IDS_CODEC),Codec);
 	WriteInt(MAKEINTRESOURCE(IDS_PREVIEW),bPreview);
 	
 	return CWinAppEx::ExitInstance();

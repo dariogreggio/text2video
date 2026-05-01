@@ -178,6 +178,7 @@ BOOL CText2vidApp::InitInstance() {
 	Codec=GetInt(MAKEINTRESOURCE(IDS_CODEC));
 	if(!Codec)
 		Codec=mmioFOURCC('I','V','5','0');
+	BackFile=GetString(MAKEINTRESOURCE(IDS_BACKFILE));
 	
 	bPreview=GetInt(MAKEINTRESOURCE(IDS_PREVIEW));
 
@@ -909,7 +910,6 @@ void CText2vidApp::OnFileCreajpeg() {
 	HANDLE hBitmap;
 	HBITMAP *phBitmap=NULL;
 	LPBITMAPINFOHEADER pBitmap;		// NON HBITMAP !!
-	char NomeIn[256],Note[256];
 	HRESULT hr; 
 	static int xSize,ySize,xSizeCap,ySizeCap;
 	DWORD l,len,ti;
@@ -921,9 +921,10 @@ void CText2vidApp::OnFileCreajpeg() {
 
 	CCreaDlg ccd;
 
-	S2=((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle();
-	_splitpath((LPCTSTR)S2,NULL,NULL,NomeIn,NULL);
-	if(ccd.DoModal(NomeIn,0) == IDOK) {
+//	S2=((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle();
+//	_splitpath((LPCTSTR)S2,NULL,NULL,NomeIn,NULL);
+	S2.SplitPath(((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle(),3);
+	if(ccd.DoModal(S2,0) == IDOK) {
 		CBitmap b;
 		BITMAP bmp;
 
@@ -956,6 +957,13 @@ void CText2vidApp::OnFileCreajpeg() {
 			{
 			i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
 			b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
+
+			// GESTIRE BackFile :)
+			if(!BackFile.IsEmpty()) {
+				//finire
+				renderBitmap(theApp.m_pMainWnd->GetDC(),BackFile,&rc2,0);	// m=0 stretch, 1=tile
+				}
+
 			DWORD *pBmp=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*4),*pBmp1=pBmp;
 			int x,y;
 			for(y=0; y<rc2.bottom; y++) {
@@ -1004,29 +1012,31 @@ void CText2vidApp::OnFileCreajpeg() {
 	}
 
 BYTE *CText2vidApp::mergeImages(LPBITMAPINFOHEADER pBitmap,BYTE *image1,double val1,BYTE *image2,double val2,BYTE *imageOut) {
-	BYTE r1,g1,b1, r2,g2,b2, r3,g3,b3;
+	BYTE r1,g1,b1, r2,g2,b2;
+	WORD r3,g3,b3;
 	int x,y;
 	BYTE *pImg=imageOut;
 
 
 	for(y=0; y<pBitmap->biHeight; y++) {
 		for(x=0; x<pBitmap->biWidth; x++) {		// verificare pad dword...
-			r1=GetRValue(*(DWORD*)image1);
-			g1=GetGValue(*(DWORD*)image1);
-			b1=GetBValue(*(DWORD*)image1);
-			r2=GetRValue(*(DWORD*)image2);
-			g2=GetGValue(*(DWORD*)image2);
-			b2=GetBValue(*(DWORD*)image2);
+			r1=*image1++;
+			g1=*image1++;
+			b1=*image1++;
+			r2=*image2++;
+			g2=*image2++;
+			b2=*image2++;
 
 			r3=r1*val1+r2*val2;
 			g3=g1*val1+g2*val2;
 			b3=b1*val1+b2*val2;
+			r3=min(r3,255);
+			g3=min(g3,255);
+			b3=min(b3,255);
 
-			*pImg++=b3;
-			*pImg++=g3;
 			*pImg++=r3;
-			image1+=3;
-			image2+=3;
+			*pImg++=g3;
+			*pImg++=b3;
 			}
 		}
 
@@ -1047,7 +1057,6 @@ void CText2vidApp::OnFileCreavideo() {
 	HANDLE hBitmap;
 	HBITMAP *phBitmap=NULL;
 	LPBITMAPINFOHEADER pBitmap;		// NON HBITMAP !!
-	char NomeIn[256],Note[256];
 	AVISTREAMINFO strhdr;
 	HRESULT hr; 
 	AVICOMPRESSOPTIONS opts; 
@@ -1066,9 +1075,10 @@ void CText2vidApp::OnFileCreavideo() {
 
 	CCreaDlg ccd;
 
-	S2=((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle();
-	_splitpath((LPCTSTR)S2,NULL,NULL,NomeIn,NULL);
-	if(ccd.DoModal(NomeIn,1) == IDOK) {
+//	S2=((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle();
+//	_splitpath((LPCTSTR)S2,NULL,NULL,NomeIn,NULL);
+	S2.SplitPath(((CMainFrame*)m_pMainWnd)->GetActiveView()->GetDocument()->GetTitle(),3);
+	if(ccd.DoModal(S2,1) == IDOK) {
 
 		CBitmap b;
 		BITMAP bmp;
@@ -1188,48 +1198,14 @@ void CText2vidApp::OnFileCreavideo() {
 				rc2.right=biCompDef.bmiHeader.biWidth;
 
 				i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL)/8;
-				{
 				pBmpBack=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /* (32bpp fisso*/);
-				DWORD *pBmp1=pBmpBack;
-				int x,y;
-				for(y=0; y<rc2.bottom; y++) {
-					for(x=0; x<rc2.right; x++) {		// invertire colorback e scrivere dword, ma occhio alla fine!
-						*(BYTE*)pBmp1=LOBYTE(HIWORD(ColorBack));
-						*(((BYTE*)pBmp1)+1)=HIBYTE(LOWORD(ColorBack));
-						*(((BYTE*)pBmp1)+2)=LOBYTE(LOWORD(ColorBack));
-						pBmp1=(DWORD*)(((DWORD)pBmp1)+4);
-						}
-					}
-				}
-				pBmpPrec=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
-				pBmpSeg=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
-				pBmpText=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso*/);
+				pBmpPrec=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso anche se non usato*/);
+				pBmpSeg=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso idem*/);
+				pBmpText=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /*32bpp fisso idem*/);
 
 				maxFrameSize=ICCompressGetSize(hICCo,&biRawDef,&biCompDef);
 				i=ICCompressBegin(hICCo,&biRawDef,&biCompDef);
 
-				switch(Transizione) {
-					case 0:		// nulla
-						step1=step2=0;
-						sstep=0;
-						break;
-					case 1:		// fadein
-						step1=0; step2=1;
-						sstep=1.0/(qfr[FpS]+1);
-						break;
-					case 2:		// fadeout
-						step1=1; step2=0;
-						sstep=1.0/(qfr[FpS]+1);
-						break;
-					case 3:		// fade in & out
-						step1=0; step2=1;
-						sstep=1.0/(qfr[FpS]+1);
-						break;
-					case 4:		// crossfade
-						step1=1; step2=0;
-						sstep=1.0/(qfr[FpS]+1);
-						break;
-					}
 				do {
 					S=readString();
 					if(S.IsEmpty())
@@ -1237,6 +1213,22 @@ void CText2vidApp::OnFileCreavideo() {
 
 					i=theApp.m_pMainWnd->GetDC()->GetDeviceCaps(BITSPIXEL);
 					b.CreateBitmap(rc2.right,rc2.bottom,1,i /*32 va! altri valori, 24, no */,NULL);
+
+					{
+					pBmpBack=(DWORD*)GlobalAlloc(GPTR,rc2.right*rc2.bottom*i /* (32bpp fisso*/);
+					DWORD *pBmp1=pBmpBack;
+					int x,y;
+					// qua mi serve a 32bit... poi dopo lo converto a 24
+					for(y=0; y<rc2.bottom; y++) {
+						for(x=0; x<rc2.right; x++) {		// invertire colorback e scrivere dword, ma occhio alla fine!
+							*(BYTE*)pBmp1=LOBYTE(HIWORD(ColorBack));
+							*(((BYTE*)pBmp1)+1)=HIBYTE(LOWORD(ColorBack));
+							*(((BYTE*)pBmp1)+2)=LOBYTE(LOWORD(ColorBack));
+							*(((BYTE*)pBmp1)+3)=0;			// serve cmq perché sotto la sovrascrivo! (alpha channel
+							pBmp1=(DWORD*)(((DWORD)pBmp1)+4);
+							}
+						}
+					}
 
 					b.SetBitmapBits((rc2.right*rc2.bottom*i)/8,pBmpBack);		// ev separare colore sfondo da colore back dei caratteri...
 					writeTextToBitmap(&b,S,0,0,LOWORD(Align),HIWORD(Align),ColorFore,ColorBack,TextSize);
@@ -1264,6 +1256,43 @@ void CText2vidApp::OnFileCreavideo() {
 // non fa nulla cmq					biCompDef.bmiHeader.biHeight=-240;
 
 
+
+					{
+					BYTE *pBmp1=(BYTE*)pBmpBack,*pBmp2=(BYTE*)pBmpBack;
+					int x,y;		// ora lo converto a 24!
+					for(y=0; y<rc2.bottom; y++) {
+						for(x=0; x<rc2.right; x++) {	
+							*pBmp1++=*pBmp2++;
+							*pBmp1++=*pBmp2++;
+							*pBmp1++=*pBmp2++;
+							pBmp2++;
+							}
+						}
+					}
+
+					switch(Transizione) {
+						case 0:		// nulla
+							step1=step2=0;
+							sstep=0;
+							break;
+						case 1:		// fadein
+							step1=0; step2=1;
+							sstep=1.0/(qfr[FpS]+1);
+							break;
+						case 2:		// fadeout
+							step1=1; step2=0;
+							sstep=1.0/(qfr[FpS]+1);
+							break;
+						case 3:		// fade in & out
+							step1=0; step2=1;
+							sstep=1.0/(qfr[FpS]+1);
+							break;
+						case 4:		// crossfade
+							step1=1; step2=0;
+							sstep=1.0/(qfr[FpS]+1);
+							break;
+						}
+
 					pOut=(BYTE *)GlobalAlloc(GPTR,maxFrameSize+100);
 
 					{
@@ -1278,12 +1307,12 @@ void CText2vidApp::OnFileCreavideo() {
 								case 3:		// fade in & out
 									step1+=sstep;
 									step2-=sstep;
-									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpBack,step1,(BYTE*)pBmpText,step2,(BYTE*)pBmpSeg);
+									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpText,step1,(BYTE*)pBmpBack,step2,(BYTE*)pBmpSeg);
 									break;
 								case 4:		// crossfade
 									step1-=sstep;
 									step2+=sstep;
-									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpPrec,step1,(BYTE*)pBmpText,step2,(BYTE*)pBmpSeg);
+									mergeImages(&biRawDef.bmiHeader,(BYTE*)pBmpText,step1,(BYTE*)pBmpPrec,step2,(BYTE*)pBmpSeg);
 									break;
 								default:
 									continue;
@@ -1412,7 +1441,11 @@ void CText2vidApp::OnFileCreavideo() {
 	goto okSaveVideo;
 
 errorSaveVideo:
+	AfxMessageBox("Impossibile creare file video!",MB_ICONSTOP);
+
 	retVal=0;
+
+
 okSaveVideo:
 
 
@@ -1466,6 +1499,7 @@ void CText2vidApp::OnOpzioniImmagini() {
 		DurataFrame=cod.m_Durata;
 		Transizione=cod.m_Transizione;
 		Codec=cod.m_CompressorV;
+		BackFile=cod.m_BackFile;
 
 		Align=MAKELONG(cod.m_AlignHoriz,cod.m_AlignVert);
 		}
@@ -1481,8 +1515,6 @@ void CText2vidApp::OnUpdateFileCreajpeg(CCmdUI* pCmdUI) {
 
 	pCmdUI->Enable(!inputFile.IsEmpty());
 	}
-
-
 
 void CText2vidApp::OnVisualizzaAnteprima() {
 
@@ -1546,6 +1578,8 @@ int CText2vidApp::ExitInstance() {
 	WriteInt(MAKEINTRESOURCE(IDS_DURATA),DurataFrame);
 	WriteInt(MAKEINTRESOURCE(IDS_TRANSIZIONE),Transizione);
 	WriteInt(MAKEINTRESOURCE(IDS_CODEC),Codec);
+  WriteString(MAKEINTRESOURCE(IDS_BACKFILE),BackFile);
+
 	WriteInt(MAKEINTRESOURCE(IDS_PREVIEW),bPreview);
 	
 	return CWinAppEx::ExitInstance();
@@ -1553,6 +1587,216 @@ int CText2vidApp::ExitInstance() {
 
 
 
+int CText2vidApp::renderBitmap(CDC *dc,int res,RECT *r) {
+	CBitmap b;
+	BITMAP bmp;
+	BITMAPINFO bi;
+	int i;
+
+	i=b.LoadBitmap(res);
+	i=b.GetBitmap(&bmp);
+	i=bmp.bmWidth*bmp.bmHeight*bmp.bmBitsPixel/8;
+	bmp.bmBits=HeapAlloc(GetProcessHeap(),HEAP_GENERATE_EXCEPTIONS,i);
+	b.GetBitmapBits(i,bmp.bmBits);
+	ZeroMemory(&bi,sizeof(BITMAPINFOHEADER));
+	bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+	bi.bmiHeader.biWidth=bmp.bmWidth;
+	bi.bmiHeader.biHeight=bmp.bmHeight;
+	bi.bmiHeader.biPlanes=bmp.bmPlanes;
+	bi.bmiHeader.biBitCount=bmp.bmBitsPixel;
+	bi.bmiHeader.biCompression=0;
+	if(!r->bottom && !r->right) {		// se mancano entrambi, uso le dim. originali
+		r->bottom=r->top+bmp.bmHeight;
+		r->right=r->top+bmp.bmWidth;
+		}
+	else if(!r->right)		// se ne manca una, calcolo il ratio dall'altra
+		r->right=(bmp.bmWidth*(r->bottom))/bmp.bmHeight;
+	else if(!r->bottom)
+		r->bottom=(bmp.bmHeight*(r->right))/bmp.bmWidth;
+	i=StretchDIBits(dc->m_hDC,r->left,r->top+r->bottom,r->right,-r->bottom,0,0,
+		bmp.bmWidth,bmp.bmHeight,bmp.bmBits,&bi,DIB_RGB_COLORS,SRCCOPY);
+	HeapFree(GetProcessHeap(),0,bmp.bmBits);
+		//	DrawIconEx(pDC->m_hDC,0,0,(HICON)LoadImage(theApp.m_hInstance,MAKEINTRESOURCE(IDB_MONOSCOPIO),IMAGE_BITMAP,0,0,LR_DEFAULTCOLOR | LR_SHARED),r.right,r.bottom,0,0,DI_NORMAL);
+//	DeleteObject(res);
+	return i;
+	}
+
+int CText2vidApp::renderBitmap(CDC *dc,const CBitmap *b,RECT *r) {
+	BITMAP bmp;
+	BITMAPINFO bi;
+	int i;
+
+	i=((CBitmap *)b)->GetBitmap(&bmp);
+	i=bmp.bmWidth*bmp.bmHeight*bmp.bmBitsPixel/8;
+	bmp.bmBits=HeapAlloc(GetProcessHeap(),HEAP_GENERATE_EXCEPTIONS,i);
+	b->GetBitmapBits(i,bmp.bmBits);
+	ZeroMemory(&bi,sizeof(BITMAPINFOHEADER));
+	bi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+	bi.bmiHeader.biWidth=bmp.bmWidth;
+	bi.bmiHeader.biHeight=bmp.bmHeight;
+	bi.bmiHeader.biPlanes=bmp.bmPlanes;
+	bi.bmiHeader.biBitCount=bmp.bmBitsPixel;
+	bi.bmiHeader.biCompression=0;
+	if(!r->bottom && !r->right) {		// se mancano entrambi, uso le dim. originali
+		r->bottom=r->top+bmp.bmHeight;
+		r->right=r->top+bmp.bmWidth;
+		}
+	else if(!r->right)		// se ne manca una, calcolo il ratio dall'altra
+		r->right=(bmp.bmWidth*(r->bottom))/bmp.bmHeight;
+	else if(!r->bottom)
+		r->bottom=(bmp.bmHeight*(r->right))/bmp.bmWidth;
+	i=StretchDIBits(dc->m_hDC,r->left,r->bottom-r->top,r->right,r->top-r->bottom,0,0,
+		bmp.bmWidth,bmp.bmHeight,bmp.bmBits,&bi,DIB_RGB_COLORS,SRCCOPY);
+	HeapFree(GetProcessHeap(),0,bmp.bmBits);
+		//	DrawIconEx(pDC->m_hDC,0,0,(HICON)LoadImage(theApp.m_hInstance,MAKEINTRESOURCE(IDB_MONOSCOPIO),IMAGE_BITMAP,0,0,LR_DEFAULTCOLOR | LR_SHARED),r.right,r.bottom,0,0,DI_NORMAL);
+	return i;
+	}
+
+int CText2vidApp::renderBitmap(CDC *dc,const BITMAPINFO *bi,const BYTE *p,const RECT *r) {
+	int i;
+
+	i=StretchDIBits(dc->m_hDC,r->left,r->top,r->right,r->bottom,0,0,
+		bi->bmiHeader.biWidth,bi->bmiHeader.biHeight,p,bi,DIB_RGB_COLORS,SRCCOPY);
+	return i;
+	}
+
+int CText2vidApp::renderBitmap(CDC *dc,const char *aBitmapFile,const RECT *r,int m) {	// m=0 stretch, 1=tile
+	CFile hf1;
+	BITMAPFILEHEADER bmD;
+	BITMAPINFO *bmI;
+	int i=0;
+	CStringEx S=aBitmapFile;
+
+	if(S.FindNoCase(".bmp")>=0) {
+		if(hf1.Open(aBitmapFile,CFile::modeRead | CFile::typeBinary)) {
+			hf1.Read((void *)&bmD,sizeof(BITMAPFILEHEADER));
+			bmI=(LPBITMAPINFO)LocalAlloc(LPTR,1200);
+			hf1.Read((void *)bmI,sizeof(BITMAPINFO)+256*4 /*ev.palette*/);
+			if(bmI->bmiHeader.biBitCount>0 && bmI->bmiHeader.biBitCount <= 256)
+				hf1.Read((void *)bmI->bmiColors,4*bmI->bmiHeader.biBitCount);
+			_llseek(hf1,bmD.bfOffBits,FILE_BEGIN);
+			BYTE *p=(BYTE *)HeapAlloc(GetProcessHeap(),HEAP_GENERATE_EXCEPTIONS,bmI->bmiHeader.biSizeImage);
+			if(p) {
+				hf1.Read(p,bmI->bmiHeader.biSizeImage);
+				i=StretchDIBits(dc->m_hDC,r->left,r->top,r->right,r->bottom,0,0,bmI->bmiHeader.biWidth,bmI->bmiHeader.biHeight,
+					p,bmI,DIB_RGB_COLORS,SRCCOPY);
+				}
+			HeapFree(GetProcessHeap(),0,p);
+			LocalFree(bmI);
+			hf1.Close();
+			}
+		}
+	else if(S.FindNoCase(".jpg")>=0) {
+		CJpeg myJpeg;
+		bmI=(LPBITMAPINFO)LocalAlloc(LPTR,1200);
+#ifndef _DEBUG		// c'è qualche bug in jpeg... in debug si schianta il distruttore da qualche parte
+		BYTE *p=myJpeg.readJPEGFile(aBitmapFile,&bmI->bmiHeader,NULL);
+		if(p)
+			i=StretchDIBits(dc->m_hDC,r->left,r->top,r->right,r->bottom,0,0,bmI->bmiHeader.biWidth,bmI->bmiHeader.biHeight,
+				p,bmI,DIB_RGB_COLORS,SRCCOPY);
+		HeapFree(GetProcessHeap(),0,p);
+#endif
+		LocalFree(bmI);
+		}
+
+	return i;
+	}
+
+BYTE *CText2vidApp::scaleBitmap(const BITMAPINFO *sb,BITMAPINFO *db,BYTE *d) {
+	register int x,y,x2,y2,xRatio,yRatio;
+	register BYTE *p3,*s=((BYTE *)sb)+sizeof(BITMAPINFOHEADER),*p1;
+		// ce ne sbattiamo della palette, casomai...
+	int xCnt,yCnt;
+	int i,j,j1;
+	register DWORD n;
+	DWORD l=db->bmiHeader.biWidth*db->bmiHeader.biHeight*db->bmiHeader.biBitCount/8;
+
+	xRatio=0;
+	yRatio=0;
+	x=sb->bmiHeader.biWidth;
+	y=sb->bmiHeader.biHeight;
+	x2=db->bmiHeader.biWidth;
+	y2=db->bmiHeader.biHeight;
+
+	if(!d) {
+		d=(BYTE *)HeapAlloc(GetProcessHeap(),HEAP_GENERATE_EXCEPTIONS,l+10000 /* PATCH! verificare dove sfora...*/ );
+		if(!d)
+			goto fine;
+		}
+	if(sb->bmiHeader.biWidth == db->bmiHeader.biWidth && sb->bmiHeader.biHeight==db->bmiHeader.biHeight && sb->bmiHeader.biBitCount==db->bmiHeader.biBitCount) {
+		memcpy(d,s,l);
+		goto fine;
+		}
+
+	for(j=0,j1=0; j<y; j++) {
+		p1=s+j*(x*3);
+		p3=d+j1*(x2*3);
+//		p1=p2;
+		xRatio=0;
+		for(i=0; i<x; i++) {
+			n=*(DWORD *)p1;
+			// OCCHIO a accesso DWORD alla fine...
+//			n=(*(WORD *)p1) | ((*(BYTE *)(p1+2)) << 16);		// cast a DWORD poteva fallire a fine buffer.. !
+
+			if(x2 < x) {				// se la dest è minore della source...
+				*(WORD *)p3=n;
+				*(p3+2)=LOBYTE(HIWORD(n));
+				do {
+					xRatio+=x2;
+					p1+=3;
+					} while(xRatio<x);
+				xRatio-=x;
+				p3+=3;
+			// forse andrebbe anche incrementato i... non si nota ma... v. o7ecosto
+				i++;
+
+				}
+			else {
+				while(xRatio<x2) {
+					*(WORD *)p3=n;
+					*(p3+2)=LOBYTE(HIWORD(n));
+					p3+=3;
+					xRatio+=x;
+					}
+				xRatio-=x2;
+				p1+=3;
+				} 
+
+			}
+		if(y2 < y) {				// se la dest è minore della source...
+			while(yRatio<y) {
+				yRatio+=y2;
+				j++;
+				}
+			yRatio-=y;
+			j--;
+			j1++;
+			}
+		else {
+			int j2=j1+1;
+			int x3=x2*3;
+			p1=d+j1*x3;
+			while(yRatio < (y2-yRatio)) {
+				p3=d+j2*x3;
+				memcpy(p3,p1,x3);
+				yRatio+=y;
+				j2++;
+				j1++;
+				}
+			yRatio-=y2;
+			} 
+		}
+
+
+fine:
+	return d;
+	}
+
+int CText2vidApp::adjustBitmap(BYTE *p,short int l,short int c,short int s) {
+	int i;
+
+	return i;
+	}
 
 
 
@@ -2188,6 +2432,30 @@ CStringEx CStringEx::FormatSize(DWORD dwFileSize) {
 	return *this;
 	}
 
+CStringEx CStringEx::SplitPath(LPCTSTR path,BYTE mode) {
+	char myBuf[256];
+
+	switch(mode) {
+		case 1:
+			_splitpath(path,myBuf,NULL,NULL,NULL);
+			*this=myBuf;
+			break;
+		case 2:
+			_splitpath(path,NULL,myBuf,NULL,NULL);
+			*this=myBuf;
+			break;
+		case 3:
+			_splitpath(path,NULL,NULL,myBuf,NULL);
+			*this=myBuf;
+			break;
+		case 4:
+			_splitpath(path,NULL,NULL,NULL,myBuf);
+			*this=myBuf;
+			break;
+		}
+
+	return *this;
+	}
 
 
 

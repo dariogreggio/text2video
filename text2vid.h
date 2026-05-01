@@ -71,6 +71,7 @@ class CStringEx : public CString {
 		int Decode64();
 		CStringEx FormatTime(int m=0,CTime mT=0);
 		CStringEx FormatSize(DWORD);
+		CStringEx SplitPath(LPCTSTR,BYTE mode);
 		void Print();
 		void Debug();
 		CStringEx() : CString() {};		// servono tutti i costruttori "perch non ne ha di virtual, la CString" !
@@ -88,6 +89,7 @@ class CStringEx : public CString {
 		CStringEx(int i, const char* format="%d", DWORD options=NO_OPTIONS);
 		CStringEx(double d, const char* format="%02lf", DWORD options=NO_OPTIONS);
 		virtual ~CStringEx() {};
+
 private:
 	CString InsertSeparator(DWORD);
 	};
@@ -278,7 +280,6 @@ protected:
 // See text2vid.cpp for the implementation of this class
 //
 
-// CVidsendDoc2 document
 struct VIDEO_SIZE {
 	SIZE imageSize;
 	};
@@ -296,6 +297,8 @@ public:
 	BYTE Transizione;
 	CString inputFile,outputFile;
 	CString Font;
+	CString BackFile;
+	DWORD Codec;
 
 	DWORD inputPos;
 
@@ -310,7 +313,16 @@ public:
 
 	DWORD getVersione(char *n=NULL,char *n1=NULL,const char *language=NULL) const;
 
-// Overrides
+	BYTE *mergeImages(LPBITMAPINFOHEADER pBitmap,BYTE *image1,double val1,BYTE *image2,double val2,BYTE *imageOut);
+
+	int renderBitmap(CDC *dc,int res,RECT *r);
+	int renderBitmap(CDC *dc,const CBitmap *b,RECT *r);
+	int renderBitmap(CDC *dc,const BITMAPINFO *bi,const BYTE *p,const RECT *r);
+	int renderBitmap(CDC *dc,const char *aBitmapFile,const RECT *r,int m);	// m=0 stretch, 1=tile
+	BYTE *scaleBitmap(const BITMAPINFO *sb,BITMAPINFO *db,BYTE *d);
+	int adjustBitmap(BYTE *p,short int l,short int c,short int s);
+	
+	// Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CText2vidApp)
 	public:

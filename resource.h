@@ -28,6 +28,9 @@
 #define IDC_EDIT2                       1016
 #define IDC_CHECK1                      1017
 #define IDC_COMBO2                      1018
+#define IDC_COMBO3                      1019
+#define IDC_BUTTON4                     1020
+#define IDC_EDIT3                       1021
 #define ID_OPZIONI_IMMAGINI             32771
 #define ID_FILE_CREAVIDEO               32772
 #define ID_FILE_CREAJPEG                32773
@@ -44,6 +47,8 @@
 #define IDS_FPS                         61456
 #define IDS_DURATA                      61457
 #define IDS_TRANSIZIONE                 61458
+#define IDS_CODEC                       61459
+#define IDS_BACKFILE                    61460
 
 // Next default values for new objects
 // 
@@ -52,7 +57,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32775
-#define _APS_NEXT_CONTROL_VALUE         1018
+#define _APS_NEXT_CONTROL_VALUE         1022
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

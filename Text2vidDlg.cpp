@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "text2vid.h"
 #include "Text2vidDlg.h"
+#include <vfw.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -14,10 +15,8 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // COpzioniDlg dialog
 
-
 COpzioniDlg::COpzioniDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(COpzioniDlg::IDD, pParent)
-{
+	: CDialog(COpzioniDlg::IDD, pParent) {
 	//{{AFX_DATA_INIT(COpzioniDlg)
 	m_DimensioneImmagini = -1;
 	m_AlignHoriz = -1;
@@ -27,14 +26,16 @@ COpzioniDlg::COpzioniDlg(CWnd* pParent /*=NULL*/)
 	m_FontSize = 0;
 	m_AutoSize = FALSE;
 	m_Transizione = -1;
+	m_BackFile = _T("");
 	//}}AFX_DATA_INIT
-}
+	}
 
 
-void COpzioniDlg::DoDataExchange(CDataExchange* pDX)
-{
+void COpzioniDlg::DoDataExchange(CDataExchange* pDX) {
+
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(COpzioniDlg)
+	DDX_Control(pDX, IDC_COMBO3, m_ComboCompressorV);
 	DDX_Radio(pDX, IDC_RADIO1, m_DimensioneImmagini);
 	DDX_Radio(pDX, IDC_RADIO5, m_AlignHoriz);
 	DDX_Radio(pDX, IDC_RADIO9, m_AlignVert);
@@ -45,8 +46,9 @@ void COpzioniDlg::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxInt(pDX, m_FontSize, 2, 255);
 	DDX_Check(pDX, IDC_CHECK1, m_AutoSize);
 	DDX_CBIndex(pDX, IDC_COMBO2, m_Transizione);
+	DDX_Text(pDX, IDC_EDIT3, m_BackFile);
 	//}}AFX_DATA_MAP
-}
+	}
 
 
 BEGIN_MESSAGE_MAP(COpzioniDlg, CDialog)
@@ -54,6 +56,8 @@ BEGIN_MESSAGE_MAP(COpzioniDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON1, OnButton1)
 	ON_BN_CLICKED(IDC_BUTTON2, OnButton2)
 	ON_BN_CLICKED(IDC_BUTTON3, OnButton3)
+	ON_CBN_SELCHANGE(IDC_COMBO3, OnSelchangeCombo3)
+	ON_BN_CLICKED(IDC_BUTTON4, OnButton4)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -62,6 +66,7 @@ END_MESSAGE_MAP()
 
 BOOL COpzioniDlg::OnInitDialog() {
 	CString S;
+	int n;
 
 	CDialog::OnInitDialog();
 	
@@ -80,11 +85,45 @@ BOOL COpzioniDlg::OnInitDialog() {
 	m_Transizione=theApp.Transizione;
 	m_AlignHoriz=LOWORD(theApp.Align);
 	m_AlignVert=HIWORD(theApp.Align);
+	m_BackFile=theApp.BackFile;
+
+	m_CompressorV=theApp.Codec;
+	n=enumCompressorV(&m_ComboCompressorV,m_CompressorV);
+	m_ComboCompressorV.SetCurSel(HIWORD(n));
 
 	UpdateData(FALSE);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
+	}
+
+DWORD COpzioniDlg::enumCompressorV(CComboBox *c,DWORD v) {
+	int i,j,n=0;
+	HIC hic;
+	ICINFO ii;
+	CString S;
+
+	c->AddString("<nessuna>");
+	c->SetItemData(0,0);
+	for(i=0; ICInfo(ICTYPE_VIDEO, i, &ii); i++) {
+    hic=ICOpen(ii.fccType, ii.fccHandler, ICMODE_QUERY); 
+    if(hic) { 
+        // Skip this compressor if it can't handle the format. 
+/*      if(fccType == ICTYPE_VIDEO && pvIn != NULL && 
+        ICDecompressQuery(hic, pvIn, NULL) != ICERR_OK) { 
+	      ICClose(hic); 
+				continue;
+				}*/
+      ICGetInfo(hic, &ii, sizeof(ii)); 
+      ICClose(hic); 
+			}
+ 		S=ii./*szDescription*/ szName;
+		c->AddString(S);
+		c->SetItemData(i+1,ii.fccHandler);
+		if(v==ii.fccHandler && !n) 
+			n=i+1;
+		}
+	return MAKELONG(i,n);
 	}
 
 void COpzioniDlg::OnButton1() {
@@ -133,9 +172,29 @@ void COpzioniDlg::OnButton3() {		// font
 	
 	}
 
+void COpzioniDlg::OnSelchangeCombo3() {
+	int i=m_ComboCompressorV.GetCurSel();
+
+	if(i != CB_ERR)
+		m_CompressorV=m_ComboCompressorV.GetItemData(i);
+	
+	}
+
+void COpzioniDlg::OnButton4() {
+	CString S=m_BackFile;
+	CFileDialog myDlg(TRUE,NULL,S,OFN_OVERWRITEPROMPT,
+		"File immagine (*.jpg)|*.JPG|File immagine (*.png)|*.PNG|File immagine (*.bmp)|*.BMP|Tutti i file (*.*)|*.*||"
+		);
+
+	if(myDlg.DoModal() == IDOK) {
+		m_BackFile=myDlg.GetPathName();
+		UpdateData(FALSE);
+		}
+	}
+
+
 /////////////////////////////////////////////////////////////////////////////
 // CCreaDlg dialog
-
 
 CCreaDlg::CCreaDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CCreaDlg::IDD, pParent) {
@@ -145,8 +204,7 @@ CCreaDlg::CCreaDlg(CWnd* pParent /*=NULL*/)
 }
 
 
-void CCreaDlg::DoDataExchange(CDataExchange* pDX)
-{
+void CCreaDlg::DoDataExchange(CDataExchange* pDX) {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CCreaDlg)
 	DDX_Text(pDX, IDC_EDIT1, m_NomeFile);
@@ -157,6 +215,7 @@ void CCreaDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CCreaDlg, CDialog)
 	//{{AFX_MSG_MAP(CCreaDlg)
+	ON_BN_CLICKED(IDC_BUTTON1, OnButton1)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -164,14 +223,38 @@ END_MESSAGE_MAP()
 // CCreaDlg message handlers
 
 BOOL CCreaDlg::OnInitDialog() {
+	CString S;
+
 	CDialog::OnInitDialog();
 	
-	m_NomeFile=theApp.outputFile;
+	GetWindowText(S);
+	S += which ? " video" : " immagine";
+	SetWindowText(S);
+//	m_NomeFile=theApp.outputFile;
 
 	UpdateData(FALSE);
 	
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
+	}
+
+int CCreaDlg::DoModal(CString T,BYTE w) {
+
+	m_NomeFile=T;
+	which=w;
+	return CDialog::DoModal();
+	}
+
+void CCreaDlg::OnButton1() {
+	CString S=m_NomeFile;
+	CFileDialog myDlg(FALSE,NULL,S,OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
+		which ? "File video (*.avi)|*.AVI|Tutti i file (*.*)|*.*||" : "File immagine (*.jpg)|*.JPG|Tutti i file (*.*)|*.*||"
+		);
+
+	if(myDlg.DoModal() == IDOK) {
+		m_NomeFile=myDlg.GetPathName();
+		UpdateData(FALSE);
+		}
 	}
 
 

@@ -74,7 +74,7 @@ class CStringEx : public CString {
 		CStringEx SplitPath(LPCTSTR,BYTE mode);
 		void Print();
 		void Debug();
-		CStringEx() : CString() {};		// servono tutti i costruttori "perch non ne ha di virtual, la CString" !
+		CStringEx() : CString() {};		// servono tutti i costruttori "perché non ne ha di virtual, la CString" !
 		// https://www.codeguru.com/cpp/cpp/string/ext/article.php/c2793/CString-Extension.htm
 		// https://www.codeproject.com/Articles/2396/Simple-CString-Extension
 		CStringEx(const CString& stringSrc) : CString(stringSrc) {};
@@ -289,7 +289,7 @@ public:
 	static const struct VIDEO_SIZE qsv[4];
 	static const BYTE qfr[5];
 	COLORREF ColorFore,ColorBack;
-	WORD TextSize;
+	short int TextSize;			// -1 se auto
 	BYTE ImageSize;
 	DWORD Align;
 	WORD DurataFrame;
@@ -319,7 +319,9 @@ public:
 	int renderBitmap(CDC *dc,const CBitmap *b,RECT *r);
 	int renderBitmap(CDC *dc,const BITMAPINFO *bi,const BYTE *p,const RECT *r);
 	int renderBitmap(CDC *dc,const char *aBitmapFile,const RECT *r,int m);	// m=0 stretch, 1=tile
-	BYTE *scaleBitmap(const BITMAPINFO *sb,BITMAPINFO *db,BYTE *d);
+	int renderBitmap(CBitmap b,const char *aBitmapFile,const RECT *r,int m);	// m=0 stretch, 1=tile
+	int renderBitmap(BYTE *d,const char *aBitmapFile,const RECT *r,BYTE bpp,int m,bool f);	// m=0 stretch, 1=tile; TRUE=flip
+	BYTE *scaleBitmap(const BITMAPINFO *sb,BYTE *s,BITMAPINFO *db,BYTE *d);
 	int adjustBitmap(BYTE *p,short int l,short int c,short int s);
 	
 	// Overrides

@@ -56,6 +56,7 @@ protected:
 	afx_msg void OnButton3();
 	afx_msg void OnSelchangeCombo3();
 	afx_msg void OnButton4();
+	afx_msg void OnCheck1();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 	};

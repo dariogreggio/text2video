@@ -58,6 +58,7 @@ BEGIN_MESSAGE_MAP(COpzioniDlg, CDialog)
 	ON_BN_CLICKED(IDC_BUTTON3, OnButton3)
 	ON_CBN_SELCHANGE(IDC_COMBO3, OnSelchangeCombo3)
 	ON_BN_CLICKED(IDC_BUTTON4, OnButton4)
+	ON_BN_CLICKED(IDC_CHECK1, OnCheck1)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -71,6 +72,8 @@ BOOL COpzioniDlg::OnInitDialog() {
 	CDialog::OnInitDialog();
 	
 	m_FontSize=theApp.TextSize;
+	m_AutoSize = m_FontSize == -1 ? TRUE : FALSE;
+	GetDlgItem(IDC_EDIT2)->EnableWindow(!m_AutoSize);
 	m_ForeColor=theApp.ColorFore;
 	S.Format("%06X",m_ForeColor);
 	GetDlgItem(IDC_BUTTON1)->SetWindowText(S);
@@ -128,17 +131,23 @@ DWORD COpzioniDlg::enumCompressorV(CComboBox *c,DWORD v) {
 
 void COpzioniDlg::OnButton1() {
 	CColorDialog ccd;
+	CString S;
 	
 	if(ccd.DoModal() == IDOK) {
 		m_ForeColor=ccd.m_cc.rgbResult;
+		S.Format("%06X",m_ForeColor);
+		GetDlgItem(IDC_BUTTON1)->SetWindowText(S);
 		}
 	}
 
 void COpzioniDlg::OnButton2() {		// colore sfondo
 	CColorDialog ccd;
+	CString S;
 
 	if(ccd.DoModal() == IDOK) {
 		m_BackColor=ccd.m_cc.rgbResult;
+		S.Format("%06X",m_BackColor);
+		GetDlgItem(IDC_BUTTON2)->SetWindowText(S);
 		}
 	}
 
@@ -166,6 +175,7 @@ void COpzioniDlg::OnButton3() {		// font
 
 	if(ChooseFont(&cf)) {
 		m_Font=cf.lpLogFont->lfFaceName;
+		GetDlgItem(IDC_BUTTON3)->SetWindowText(m_Font);
 		// m_FontSize=cf.lpLogFont->lfHeight;  no, non esce...
 		// UpdateData(FALSE);
 		}
@@ -190,6 +200,20 @@ void COpzioniDlg::OnButton4() {
 		m_BackFile=myDlg.GetPathName();
 		UpdateData(FALSE);
 		}
+	}
+
+void COpzioniDlg::OnCheck1() {
+
+	if(((CButton*)GetDlgItem(IDC_CHECK1))->GetCheck() == BST_CHECKED)
+		GetDlgItem(IDC_EDIT2)->EnableWindow(FALSE);
+	else {
+		GetDlgItem(IDC_EDIT2)->EnableWindow(TRUE);
+		m_AutoSize=FALSE;
+		m_FontSize=8;
+		UpdateData(FALSE);
+		}
+	UpdateData();
+	
 	}
 
 
@@ -256,5 +280,7 @@ void CCreaDlg::OnButton1() {
 		UpdateData(FALSE);
 		}
 	}
+
+
 
 
